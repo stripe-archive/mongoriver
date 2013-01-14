@@ -1,0 +1,101 @@
+#!/usr/bin/env ruby
+require 'logger'
+require 'optparse'
+
+require 'rubygems'
+require 'bundler/setup'
+require 'mongoriver'
+
+module Mongoriver
+  class Mongocp < Streambed
+    include Mongoriver::Logging
+
+    def initialize(upstreams, type, start_optime, pause)
+      super(upstreams, type)
+      @start_optime = start_optime
+      @pause = pause
+    end
+
+    def pause
+      if @pause
+        $stderr.puts("Press enter to continue")
+        $stdin.readline
+      end
+    end
+
+    def hook_optime
+      @start_optime
+    end
+
+    def hook_update_optime(ts, mandatory)
+    end
+
+    all_hooks.each do |name, _, opts|
+      next if name == :optime || name == :update_optime
+      define_method(hook_name(name)) {|*args| pause}
+    end
+  end
+end
+
+def main
+  options = {:host => nil, :port => nil, :type => :slave, :optime => 0, :pause => true, :verbose => 0}
+  optparse = OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} [options]"
+
+    opts.on('-v', '--verbosity', 'Verbosity of debugging output') do
+      options[:verbose] += 1
+    end
+
+    opts.on('--help', 'Display this message') do
+      puts opts
+      exit(1)
+    end
+
+    opts.on('-h HOST', '--host', 'Upstream host to connect to') do |host|
+      options[:host] = host
+    end
+
+    opts.on('-p PORT', '--port', 'Upstream host to connect to') do |port|
+      options[:port] = Integer(port)
+    end
+
+    opts.on('-a', '--all', 'Allow connections even directly to a primary') do
+      options[:type] = :direct
+    end
+
+    opts.on('-s OPTIME', '--start', 'Starting optime') do |optime|
+      options[:optime] = Integer(optime)
+    end
+
+    opts.on('-f', '--follow-automatically', "Don't prompt between ops") do
+      options[:pause] = false
+    end
+  end
+  optparse.parse!
+
+  if ARGV.length != 0
+    puts optparse
+    return 1
+  end
+
+  log = Log4r::Logger.new('Stripe')
+  log.outputters = Log4r::StdoutOutputter.new(STDERR)
+  if options[:verbose] >= 1
+    log.level = Log4r::DEBUG
+  else
+    log.level = Log4r::INFO
+  end
+
+  runner = Mongoriver::Mongocp.new(["#{options[:host]}:#{options[:port]}"], options[:type], options[:optime], options[:pause])
+  runner.run
+  return 0
+end
+
+if $0 == __FILE__
+  ret = main
+  begin
+    exit(ret)
+  rescue TypeError
+    exit(0)
+  end
+end
