@@ -32,7 +32,7 @@ module Mongoriver
         raise "Server at #{@upstream_conn.host}:#{@upstream_conn.port} is the primary -- if you're ok with that, check why your wrapper is passing :direct rather than :slave (HINT: try passing a -a to scripts like optail or mongocp)" if @type == :slave && @upstream_conn.primary?
         ensure_upstream_replset!
       when :existing
-        raise "Must pass in a single existing Mongo::Connection with :existing" unless @upstreams.length == 1 && @upstreams[0].is_a?(Mongo::Connection)
+        raise "Must pass in a single existing Mongo::Connection with :existing" unless @upstreams.length == 1 && @upstreams[0].respond_to?(:db)
         @upstream_conn = @upstreams[0]
       else
         raise "Invalid connection type: #{@type.inspect}"
