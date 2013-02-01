@@ -1,5 +1,6 @@
-# -*- encoding: utf-8 -*-
-require File.expand_path('../lib/mongoriver/version', __FILE__)
+# -*- coding: utf-8 -*-
+$:.unshift(File.expand_path("lib", File.dirname(__FILE__)))
+require 'mongoriver/version'
 
 Gem::Specification.new do |gem|
   gem.authors       = ["Greg Brockman"]
