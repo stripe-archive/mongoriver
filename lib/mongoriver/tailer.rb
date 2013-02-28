@@ -3,10 +3,12 @@ module Mongoriver
     include Mongoriver::Logging
 
     attr_reader :upstream_conn
+    attr_reader :oplog
 
-    def initialize(upstreams, type)
+    def initialize(upstreams, type, oplog = "oplog.rs")
       @upstreams = upstreams
       @type = type
+      @oplog = oplog
       # This number seems high
       @conn_opts = {:op_timeout => 86400}
 
@@ -61,7 +63,7 @@ module Mongoriver
     end
 
     def oplog_collection
-      @upstream_conn.db('local').collection('oplog.rs')
+      @upstream_conn.db('local').collection(oplog)
     end
 
     def tail_from(ts, opts = {})
