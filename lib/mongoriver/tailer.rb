@@ -13,6 +13,7 @@ module Mongoriver
       @conn_opts = {:op_timeout => 86400}
 
       @cursor = nil
+      @stop = false
 
       connect_upstream
     end
@@ -83,20 +84,26 @@ module Mongoriver
       end
     end
 
-    def stop
-      @cursor.close if @cursor
-      @cursor = nil
-    end
-
     def stream(limit=nil)
       count = 0
-      while @cursor.has_next?
+      while !@stop && @cursor.has_next?
         count += 1
         break if limit && count >= limit
+
         yield @cursor.next
       end
 
       return @cursor.has_next?
+    end
+
+    def stop
+      @stop = true
+    end
+
+    def close
+      @cursor.close if @cursor
+      @cursor = nil
+      @stop = false
     end
   end
 end

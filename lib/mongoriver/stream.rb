@@ -13,6 +13,7 @@ module Mongoriver
 
       @tailer = tailer
       @outlet = outlet
+      @stop = false
       @stats = {}
     end
 
@@ -31,11 +32,16 @@ module Mongoriver
 
       @tailer.tail_from(@starting_optime)
 
-      while true
+      until @stop
         @tailer.stream do |op|
           handle_op(op)
         end
       end
+    end
+
+    def stop
+      @stop = true
+      @tailer.stop
     end
 
     private
