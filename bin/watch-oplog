@@ -7,32 +7,19 @@ require 'bundler/setup'
 require 'mongoriver'
 
 module Mongoriver
-  class Mongocp < Streambed
+  class OplogWatcher < AbstractOutlet
     include Mongoriver::Logging
 
-    def initialize(upstreams, type, start_optime, pause)
-      super(upstreams, type)
-      @start_optime = start_optime
-      @pause = pause
+    def insert(db_name, collection_name, document)
+      log.info("got an insert! #{document.inspect}")
     end
 
-    def pause
-      if @pause
-        $stderr.puts("Press enter to continue")
-        $stdin.readline
-      end
+    def remove(db_name, collection_name, document)
+      log.info("got a remove! #{document.inspect}")
     end
 
-    def hook_optime
-      @start_optime
-    end
-
-    def hook_update_optime(ts, mandatory)
-    end
-
-    all_hooks.each do |name, _, opts|
-      next if name == :optime || name == :update_optime
-      define_method(hook_name(name)) {|*args| pause}
+    def update(db_name, collection_name, selector, updates)
+      log.info("got an update! #{selector}, #{updates}")
     end
   end
 end
@@ -66,10 +53,6 @@ def main
     opts.on('-s OPTIME', '--start', 'Starting optime') do |optime|
       options[:optime] = Integer(optime)
     end
-
-    opts.on('-f', '--follow-automatically', "Don't prompt between ops") do
-      options[:pause] = false
-    end
   end
   optparse.parse!
 
@@ -86,8 +69,11 @@ def main
     log.level = Log4r::INFO
   end
 
-  runner = Mongoriver::Mongocp.new(["#{options[:host]}:#{options[:port]}"], options[:type], options[:optime], options[:pause])
-  runner.run
+  tailer = Mongoriver::Tailer.new(["#{options[:host]}:#{options[:port]}"], options[:type])
+  outlet = Mongoriver::OplogWatcher.new
+
+  stream = Mongoriver::Stream.new(tailer, outlet)
+  stream.run_forever
   return 0
 end
 
