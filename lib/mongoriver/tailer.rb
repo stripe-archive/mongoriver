@@ -32,7 +32,7 @@ module Mongoriver
         opts = @conn_opts.merge(:slave_ok => true)
         host, port = parse_direct_upstream
         @upstream_conn = Mongo::Connection.new(host, port, opts)
-        raise "Server at #{@upstream_conn.host}:#{@upstream_conn.port} is the primary -- if you're ok with that, check why your wrapper is passing :direct rather than :slave (HINT: try passing a -a to scripts like optail or mongocp)" if @type == :slave && @upstream_conn.primary?
+        raise "Server at #{@upstream_conn.host}:#{@upstream_conn.port} is the primary -- if you're ok with that, check why your wrapper is passing :direct rather than :slave" if @type == :slave && @upstream_conn.primary?
         ensure_upstream_replset!
       when :existing
         raise "Must pass in a single existing Mongo::Connection with :existing" unless @upstreams.length == 1 && @upstreams[0].respond_to?(:db)

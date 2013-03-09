@@ -25,7 +25,7 @@ module Mongoriver
 end
 
 def main
-  options = {:host => nil, :port => nil, :type => :slave, :optime => 0, :pause => true, :verbose => 0}
+  options = {:host => nil, :port => nil, :type => :direct, :optime => 0, :pause => true, :verbose => 0}
   optparse = OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options]"
 
@@ -44,10 +44,6 @@ def main
 
     opts.on('-p PORT', '--port', 'Upstream host to connect to') do |port|
       options[:port] = Integer(port)
-    end
-
-    opts.on('-a', '--all', 'Allow connections even directly to a primary') do
-      options[:type] = :direct
     end
 
     opts.on('-s OPTIME', '--start', 'Starting optime') do |optime|
