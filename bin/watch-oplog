@@ -69,6 +69,14 @@ def main
   outlet = Mongoriver::OplogWatcher.new
 
   stream = Mongoriver::Stream.new(tailer, outlet)
+
+  %w[TERM INT USR2].each do |sig|
+    Signal.trap(sig) do
+      log.info("Got SIG#{sig}. Preparing to exit...")
+      stream.stop
+    end
+  end
+
   stream.run_forever
   return 0
 end
