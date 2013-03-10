@@ -11,7 +11,7 @@ module Mongoriver
     def create_index(db_name, collection_name, index_key, options); end
     def drop_index(db_name, collection_name, index_name); end
 
-    def create_collection(db_name, collection_name); end
+    def create_collection(db_name, collection_name,  options); end
     def drop_collection(db_name, collection_name); end
     def rename_collection(db_name, old_collection_name, new_collection_name); end
 

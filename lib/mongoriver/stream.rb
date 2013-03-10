@@ -147,17 +147,29 @@ module Mongoriver
         index_name = data['index']
         trigger(:drop_index, db_name, deleted_from_collection, index_name)
       elsif created_collection = data['create']
-        trigger(:create_collection, db_name, created_collection)
+        handle_create_collection(db_name, data)
       elsif dropped_collection = data['drop']
         trigger(:drop_collection, db_name, dropped_collection)
-      elsif old_collection_name = data['renameCollection']
-        new_collection_name = data['to']
-        trigger(:rename_collection, old_collection_name, new_collection_name)
-      elsif dropped_db = data['dropDatabase']
-        trigger(:drop_database, dropped_db)
+      elsif old_collection_ns = data['renameCollection']
+        db_name, old_collection_name = parse_ns(old_collection_ns)
+        _, new_collection_name = parse_ns(data['to'])
+        trigger(:rename_collection, db_name, old_collection_name, new_collection_name)
+      elsif data['dropDatabase'] == 1
+        trigger(:drop_database, db_name)
       else
         raise "Unrecognized command #{data.inspect}"
       end
+    end
+
+    def handle_create_collection(db_name, data)
+      collection_name = data.delete('create')
+
+      options = {}
+      data.each do |k, v|
+        options[k.to_sym] = (k == 'size') ? v.round : v
+      end
+
+      trigger(:create_collection, db_name, collection_name, options)
     end
   end
 end
