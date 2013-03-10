@@ -107,7 +107,7 @@ module Mongoriver
       end
 
       optime = entry['ts']
-      trigger(:update_optime, optime)
+      trigger(:update_optime, optime.seconds)
     end
 
     def handle_insert(db_name, collection_name, data)
