@@ -83,8 +83,9 @@ describe 'connected tests' do
       @outlet = Mongoriver::AbstractOutlet.new
 
       @stream = Mongoriver::Stream.new(@tailer, @outlet)
-      @tail_from = Time.now.to_i
+
       sleep(1)
+      @tail_from = Time.now.to_i
     end
 
     it 'triggers the correct ops in the correct order' do
