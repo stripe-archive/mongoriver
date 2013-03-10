@@ -120,7 +120,7 @@ module Mongoriver
 
     def handle_create_index(spec)
       db_name, collection_name = parse_ns(spec['ns'])
-      index_key = spec['key'].to_a
+      index_key = spec['key'].map { |field, dir| [field, dir.round] }
       options = {}
 
       spec.each do |key, value|
@@ -130,7 +130,7 @@ module Mongoriver
             raise NotImplementedError.new("Only v=1 indexes are supported, " \
                                           "not v=#{value.inspect}")
           end
-        when 'ns', 'key' # do nothing
+        when 'ns', 'key', '_id' # do nothing
         else
           options[key.to_sym] = value
         end
