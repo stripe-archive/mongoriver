@@ -22,11 +22,11 @@ module Mongoriver
     end
 
     def run_forever(starting_timestamp=nil)
-      @starting_optime = optime_from_ts(starting_timestamp)
-
-      if @starting_optime
+      if starting_timestamp
+        @starting_optime = optime_from_ts(starting_timestamp)
         log.info("Streaming from #{Time.at(@starting_optime.seconds)}")
       else
+        @starting_optime = nil
         log.info("Streaming from #{Time.now}")
       end
 
@@ -47,8 +47,6 @@ module Mongoriver
     private
 
     def optime_from_ts(timestamp)
-      return @tailer.most_recent_timestamp if timestamp.nil?
-
       if timestamp.is_a?(Integer)
         if timestamp >= 0
           BSON::Timestamp.new(timestamp, 0)
