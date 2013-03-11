@@ -11,15 +11,15 @@ module Mongoriver
     include Mongoriver::Logging
 
     def insert(db_name, collection_name, document)
-      log.info("got an insert! #{document.inspect}")
+      log.info("got an insert for #{db_name}.#{collection_name}! #{document.inspect}")
     end
 
     def remove(db_name, collection_name, document)
-      log.info("got a remove! #{document.inspect}")
+      log.info("got a remove for #{db_name}.#{collection_name}! #{document.inspect}")
     end
 
     def update(db_name, collection_name, selector, updates)
-      log.info("got an update! #{selector}, #{updates}")
+      log.info("got an update for #{db_name}.#{collection_name}! #{selector}, #{updates}")
     end
   end
 end
