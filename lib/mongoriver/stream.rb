@@ -23,14 +23,10 @@ module Mongoriver
 
     def run_forever(starting_timestamp=nil)
       if starting_timestamp
-        @starting_optime = optime_from_ts(starting_timestamp)
-        log.info("Streaming from #{Time.at(@starting_optime.seconds)}")
+        @tailer.tail_from(optime_from_ts(starting_timestamp))
       else
-        @starting_optime = nil
-        log.info("Streaming from #{Time.now}")
+        @tailer.tail_from
       end
-
-      @tailer.tail_from(@starting_optime)
 
       until @stop
         @tailer.stream do |op|
