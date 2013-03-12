@@ -19,4 +19,8 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency('mongo', '>= 1.7')
   gem.add_runtime_dependency('bson_ext')
   gem.add_runtime_dependency('log4r')
+
+  gem.add_development_dependency('rake')
+  gem.add_development_dependency('minitest')
+  gem.add_development_dependency('mocha', '>= 0.13')
 end
