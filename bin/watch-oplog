@@ -7,38 +7,25 @@ require 'bundler/setup'
 require 'mongoriver'
 
 module Mongoriver
-  class Mongocp < Streambed
+  class OplogWatcher < AbstractOutlet
     include Mongoriver::Logging
 
-    def initialize(upstreams, type, start_optime, pause)
-      super(upstreams, type)
-      @start_optime = start_optime
-      @pause = pause
+    def insert(db_name, collection_name, document)
+      log.info("got an insert for #{db_name}.#{collection_name}! #{document.inspect}")
     end
 
-    def pause
-      if @pause
-        $stderr.puts("Press enter to continue")
-        $stdin.readline
-      end
+    def remove(db_name, collection_name, document)
+      log.info("got a remove for #{db_name}.#{collection_name}! #{document.inspect}")
     end
 
-    def hook_optime
-      @start_optime
-    end
-
-    def hook_update_optime(ts, mandatory)
-    end
-
-    all_hooks.each do |name, _, opts|
-      next if name == :optime || name == :update_optime
-      define_method(hook_name(name)) {|*args| pause}
+    def update(db_name, collection_name, selector, updates)
+      log.info("got an update for #{db_name}.#{collection_name}! #{selector}, #{updates}")
     end
   end
 end
 
 def main
-  options = {:host => nil, :port => nil, :type => :slave, :optime => 0, :pause => true, :verbose => 0}
+  options = {:host => nil, :port => nil, :type => :direct, :optime => 0, :pause => true, :verbose => 0}
   optparse = OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options]"
 
@@ -59,16 +46,8 @@ def main
       options[:port] = Integer(port)
     end
 
-    opts.on('-a', '--all', 'Allow connections even directly to a primary') do
-      options[:type] = :direct
-    end
-
     opts.on('-s OPTIME', '--start', 'Starting optime') do |optime|
       options[:optime] = Integer(optime)
-    end
-
-    opts.on('-f', '--follow-automatically', "Don't prompt between ops") do
-      options[:pause] = false
     end
   end
   optparse.parse!
@@ -86,8 +65,19 @@ def main
     log.level = Log4r::INFO
   end
 
-  runner = Mongoriver::Mongocp.new(["#{options[:host]}:#{options[:port]}"], options[:type], options[:optime], options[:pause])
-  runner.run
+  tailer = Mongoriver::Tailer.new(["#{options[:host]}:#{options[:port]}"], options[:type])
+  outlet = Mongoriver::OplogWatcher.new
+
+  stream = Mongoriver::Stream.new(tailer, outlet)
+
+  %w[TERM INT USR2].each do |sig|
+    Signal.trap(sig) do
+      log.info("Got SIG#{sig}. Preparing to exit...")
+      stream.stop
+    end
+  end
+
+  stream.run_forever
   return 0
 end
 
