@@ -5,10 +5,10 @@ module Mongoriver
     attr_reader :upstream_conn
     attr_reader :oplog
 
-    def initialize(upstreams, type, oplog = "oplog.rs")
+    def initialize(upstreams, type, opts = {})
       @upstreams = upstreams
       @type = type
-      @oplog = oplog
+      @oplog = opts.fetch(:oplog, "oplog.rs")
       # This number seems high
       @conn_opts = {:op_timeout => 86400}
 
