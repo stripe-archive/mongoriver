@@ -8,7 +8,7 @@ module Mongoriver
   class AbstractPersistentTailer < Tailer
     def initialize(upstream, type, opts={})
       raise "You can't instantiate an AbstractPersistentTailer -- did you want PersistentTailer? " if self.class == AbstractPersistentTailer
-      super(upstream, type)
+      super(upstream, type, opts)
 
       @last_saved       = nil
       @batch            = opts[:batch]

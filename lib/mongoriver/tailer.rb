@@ -5,10 +5,11 @@ module Mongoriver
     attr_reader :upstream_conn
     attr_reader :oplog
 
-    def initialize(upstreams, type, oplog = "oplog.rs")
+    def initialize(upstreams, type, opts = {})
       @upstreams = upstreams
       @type = type
-      @oplog = oplog
+      @oplog = opts.fetch(:oplog, "oplog.rs")
+      @comment = opts[:comment]
       # This number seems high
       @conn_opts = {:op_timeout => 86400}
 
@@ -72,8 +73,10 @@ module Mongoriver
 
       # Maybe if ts is old enough, just start from the beginning?
       query = (opts[:filter] || {}).merge({ 'ts' => { '$gte' => ts } })
+      query_opts = {:timeout => false}
+      query_opts[:comment] = @comment if @comment
 
-      oplog_collection.find(query, :timeout => false) do |oplog|
+      oplog_collection.find(query, query_opts) do |oplog|
         oplog.add_option(Mongo::Constants::OP_QUERY_TAILABLE)
         oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY)
 
