@@ -25,7 +25,7 @@ module Mongoriver
 end
 
 def main
-  options = {:host => nil, :port => nil, :type => :direct, :optime => 0, :pause => true, :verbose => 0}
+  options = {:host => nil, :port => nil, :type => :direct, :optime => nil, :pause => true, :verbose => 0}
   optparse = OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options]"
 
@@ -77,7 +77,7 @@ def main
     end
   end
 
-  stream.run_forever
+  stream.run_forever(options[:optime])
   return 0
 end
 
