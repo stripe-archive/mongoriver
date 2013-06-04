@@ -86,6 +86,7 @@ module Mongoriver
       end
     end
 
+    # Deprecated: use #tail(:from => ts, ...) instead
     def tail_from(ts, opts={})
       opts.merge(:from => ts)
       tail(opts)

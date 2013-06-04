@@ -23,7 +23,7 @@ module Mongoriver
 
     def run_forever(starting_timestamp=nil)
       if starting_timestamp
-        @tailer.tail_from(optime_from_ts(starting_timestamp))
+        @tailer.tail :from => optime_from_ts(starting_timestamp)
       else
         @tailer.tail
       end
