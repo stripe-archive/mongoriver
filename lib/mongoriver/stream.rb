@@ -25,7 +25,7 @@ module Mongoriver
       if starting_timestamp
         @tailer.tail_from(optime_from_ts(starting_timestamp))
       else
-        @tailer.tail_from
+        @tailer.tail
       end
 
       until @stop
