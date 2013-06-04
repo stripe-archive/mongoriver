@@ -67,21 +67,29 @@ module Mongoriver
       @upstream_conn.db('local').collection(oplog)
     end
 
-    def tail_from(ts, opts = {})
+    def tail(opts = {})
       raise "Already tailing the oplog!" if @cursor
 
-      # Maybe if ts is old enough, just start from the beginning?
-      query = (opts[:filter] || {}).merge({ 'ts' => { '$gte' => ts } })
+      query = opts[:filter] || {}
+      if ts = opts[:from]
+        # Maybe if ts is old enough, just start from the beginning?
+        query['ts'] = { '$gte' => ts }
+      end
 
       oplog_collection.find(query, :timeout => false) do |oplog|
         oplog.add_option(Mongo::Constants::OP_QUERY_TAILABLE)
-        oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY)
-
+        oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY) if query['ts']
         oplog.add_option(Mongo::Constants::OP_QUERY_AWAIT_DATA) unless opts[:dont_wait]
 
-        log.info("Starting oplog stream from #{ts}")
+        log.info("Starting oplog stream from #{ts || 'start'}")
         @cursor = oplog
       end
+    end
+
+    # Deprecated: use #tail(:from => ts, ...) instead
+    def tail_from(ts, opts={})
+      opts.merge(:from => ts)
+      tail(opts)
     end
 
     def stream(limit=nil)
