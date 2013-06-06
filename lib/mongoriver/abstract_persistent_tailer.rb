@@ -15,11 +15,9 @@ module Mongoriver
       @last_read        = nil
     end
 
-    def tail_from(ts, opts={})
-      if ts.nil?
-        ts = read_timestamp
-      end
-      super(ts, opts)
+    def tail(opts={})
+      opts[:from] ||= read_timestamp
+      super(opts)
     end
 
     def stream(limit=nil)
