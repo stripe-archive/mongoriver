@@ -17,7 +17,7 @@ Gem::Specification.new do |gem|
   gem.version       = Mongoriver::VERSION
 
   gem.add_runtime_dependency('mongo', '>= 1.7')
-  gem.add_runtime_dependency('bson_ext')
+  gem.add_runtime_dependency('bson_ext') if $platform.to_s == 'ruby'
   gem.add_runtime_dependency('log4r')
 
   gem.add_development_dependency('rake')
