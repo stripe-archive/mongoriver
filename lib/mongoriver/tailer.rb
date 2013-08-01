@@ -76,7 +76,9 @@ module Mongoriver
         query['ts'] = { '$gte' => ts }
       end
 
-      oplog_collection.find(query, :timeout => false) do |oplog|
+      mongo_opts = {:timeout => false}.merge(opts[:mongo_opts] || {})
+
+      oplog_collection.find(query, mongo_opts) do |oplog|
         oplog.add_option(Mongo::Constants::OP_QUERY_TAILABLE)
         oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY) if query['ts']
         oplog.add_option(Mongo::Constants::OP_QUERY_AWAIT_DATA) unless opts[:dont_wait]
