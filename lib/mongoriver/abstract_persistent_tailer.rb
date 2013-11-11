@@ -21,11 +21,22 @@ module Mongoriver
     end
 
     def stream(limit=nil)
-      super(limit) do |entry|
+      start_time = BSON::Timestamp.new(connection_config['localTime'].to_i, 0)
+      found_entry = false
+
+      ret = super(limit) do |entry|
         yield entry
+        found_entry = true
         @last_read = entry['ts']
         maybe_save_timestamp unless @batch
       end
+
+      if !found_entry && !ret
+        @last_read = start_time
+        maybe_save_timestamp unless @batch
+      end
+
+      return ret
     end
 
     def batch_done
