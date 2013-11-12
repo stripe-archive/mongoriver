@@ -42,9 +42,13 @@ module Mongoriver
       end
     end
 
+    def connection_config
+      @upstream_conn['admin'].command(:ismaster => 1)
+    end
+
     def ensure_upstream_replset!
       # Might be a better way to do this, but not seeing one.
-      config = @upstream_conn['admin'].command(:ismaster => 1)
+      config = connection_config
       unless config['setName']
         raise "Server at #{@upstream_conn.host}:#{@upstream_conn.port} is not running as a replica set"
       end
