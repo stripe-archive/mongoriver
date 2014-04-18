@@ -1,29 +1,53 @@
 # Mongoriver
 
-TODO: Write a gem description
+mongoriver is a library to monitor updates to your Mongo databases in
+near-realtime. It provides a simple interface for you to take actions
+when records are inserted, removed, or updated.
 
-## Installation
 
-Add this line to your application's Gemfile:
+## How it works
 
-    gem 'mongoriver'
+MongoDB has an *oplog*, a log of all write operations. `mongoriver` monitors
+updates to this oplog. See the [Mongo documentation for its oplog](http://docs.mongodb.org/manual/core/replica-set-oplog/) for more.
 
-And then execute:
+## How to use it
 
-    $ bundle
+### Step 1: Create an outlet
 
-Or install it yourself as:
+You'll need to write a class subclassing
+[Mongoriver::AbstractOutlet](https://github.com/stripe/mongoriver/blob/master/lib/mongoriver/abstract_outlet.rb).
 
-    $ gem install mongoriver
+You can override any of these methods:
 
-## Usage
+* `update_optime(timestamp)`
+* `insert(db_name, collection_name, document)`
+* `remove(db_name, collection_name, document)`
+* `update(db_name, collection_name, selector, update)`
+* `create_index(db_name, collection_name, index_key, options)`
+* `drop_index(db_name, collection_name, index_name)`
+* `create_collection(db_name, collection_name,  options)`
+* `drop_collection(db_name, collection_name)`
+* `rename_collection(db_name, old_collection_name, new_collection_name)`
+* `drop_database(db_name)`
 
-TODO: Write usage instructions here
 
-## Contributing
+You should think of these methods like callbacks -- if you want to do something
+every time a document is inserted into the Mongo database, override the
+`insert` method. You don't need to override all the methods -- if you only want
+to take action on insert and update, just override `insert` and `update`.
 
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Added some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+### Step 2: Create a stream and start the logger
+
+Once you've written your class, you can start tailing the Mongo oplog! Here's
+the code you'll need to use:
+
+```ruby
+mongo = Mongo::MongoClient.from_uri(mongo_uri)
+tailer = Mongoriver::Tailer.new([mongo], :existing)
+outlet = YourOutlet.new(your_params) # Your subclass of Mongoriver::AbstractOutlet here
+stream = Mongoriver::Stream.new(tailer, outlet)
+stream.run_forever(starting_timestamp)
+```
+
+`starting_timestamp` here is the time you want the tailer to start at. We use
+this to resume interrupted tailers so that no information is lost.
