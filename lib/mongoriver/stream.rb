@@ -115,10 +115,10 @@ module Mongoriver
     def handle_create_index(spec)
       db_name, collection_name = parse_ns(spec['ns'])
       index_key = spec['key'].map { |field, dir|
-        if dir.is_a? Numeric
+        if dir.is_a?(Numeric)
           [field, dir.round]
         else
-          [field,dir]
+          [field, dir]
         end
       }
       options = {}
