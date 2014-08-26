@@ -1,4 +1,4 @@
-# Mongoriver
+# Mongoriver [![Build Status](https://travis-ci.org/stripe/mongoriver.svg?branch=master)](https://travis-ci.org/stripe/mongoriver)
 
 mongoriver is a library to monitor updates to your Mongo databases in
 near-realtime. It provides a simple interface for you to take actions
