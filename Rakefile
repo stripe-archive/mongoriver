@@ -8,7 +8,7 @@ Rake::TestTask.new do |t|
 end
 
 Rake::TestTask.new(:'test-unit') do |t|
-  t.test_files = FileList['test/test_mongoriver.rb']
+  t.test_files = FileList['test/test_mongoriver.rb', 'test/test_toku.rb']
 end
 
 Rake::TestTask.new(:'test-connected') do |t|

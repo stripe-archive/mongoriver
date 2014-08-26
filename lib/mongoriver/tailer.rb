@@ -101,13 +101,11 @@ module Mongoriver
 
     def stream(limit=nil)
       count = 0
-      puts "#{@cursor.has_next?}"
       while !@stop && @cursor.has_next?
         count += 1
         break if limit && count >= limit
 
         record = @cursor.next
-        puts "Got record: #{record}, #{@toku_convert}"
 
         if @toku_convert
           converted = Toku.convert(record, @upstream_conn)

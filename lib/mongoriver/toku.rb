@@ -67,7 +67,7 @@ module Mongoriver
         # Note that not so unique anymore
         "h" => full_record["h"],
         # Ignoring v ("version") for now
-        # "v" => nil,
+        # "v" => 1,
         "op" => "i",
         # namespace being updated. in form of database-name.collection.name
         "ns" => operation["ns"],
@@ -81,10 +81,10 @@ module Mongoriver
       {
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
-        # "v" => nil,
+        # "v" => 1,
         "op" => "d",
         "ns" => operation["ns"],
-        # "b" => true, # ???
+        # "b" => true, # TODO: ???
         "o" => { "_id" => operation["o"]["_id"] }
       }
     end
@@ -93,7 +93,7 @@ module Mongoriver
       {
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
-        # "v" => nil,
+        # "v" => 1,
         "op" => "c",
         "ns" => operation["ns"],
         "o" => operation["o"]
@@ -101,29 +101,18 @@ module Mongoriver
     end
 
 
-    def self.update_record(operation, full_record, is_ur)
-      # Note that the o2 field will have some extra info compared to mongo oplog
-      # u and ur differ here
-
-      result = {
+    def self.update_record(operation, full_record, is_ur_record)
+      # TODO: ur == multi update?
+      ({
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
-        # "v" => nil,
+        # "v" => 1,
         "op" => "u",
         "ns" => operation["ns"],
         # { _id: BSON::ObjectId } what object was updated
         "o2" => { "_id" => operation["o"]["_id"] },
-        # "o" => operation["m"]
-      }
-      if is_ur
-        return result.merge({
-          "o" => operation["m"],
-        })
-      else
-        return result.merge({
-          "o" => operation["o2"],
-        })
-      end
+        "o" => operation[is_ur_record ? "m" : "o2"]
+      })
     end
   end
 end

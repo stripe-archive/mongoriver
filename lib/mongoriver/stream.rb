@@ -29,7 +29,6 @@ module Mongoriver
       end
 
       until @stop
-        puts "loop run_forever"
         @tailer.stream do |op|
           handle_op(op)
         end
@@ -82,8 +81,6 @@ module Mongoriver
 
       db_name, collection_name = parse_ns(ns)
       assert(db_name, "nil db name #{db_name.inspect} for #{entry.inspect}")
-
-      puts("GOT entry #{entry.inspect}")
       case op
       when 'i'
         handle_insert(db_name, collection_name, data)
