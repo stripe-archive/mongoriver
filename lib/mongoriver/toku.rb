@@ -7,6 +7,15 @@ module Mongoriver
       conn.server_info.has_key? "tokumxVersion"
     end
 
+    def operations_for(record, conn=nil)
+      if record["ops"]
+        return record["ops"]
+      end
+      # TODO: does this need to be sorted by seq?
+      refs = conn.db('local').collection('oplog.refs').find({"_id.oid" => ref})
+      refs.map { |r| r["ops"] }.flatten
+    end
+
     # TODO: query for latest, planner for latest
 
     # Convert hash representing a tokumx oplog record to mongodb oplog records.
@@ -14,27 +23,26 @@ module Mongoriver
     # Things to note:
     #   1) Unlike mongo oplog, the timestamps will not be monotonically
     #      increasing
-    #   2)
+    #   2) h fields (unique ids) will also not be unique on multi-updates
+    #   3) operations marked by 'n' toku are ignored, as these do <TODO: explain>
     # @see http://www.tokutek.com/2014/03/comparing-a-tokumx-and-mongodb-oplog-entry/
     # @returns Array<Hash> List of mongodb oplog records.
-    def self.convert(record)
-      # TODO: handle the case of long update with reference
-      # TODO: handle 'n' after you figure out what that is
-      # TODO: handle un-multi update
-      result = record["ops"].each do |operation|
-        result = nil
+    def self.convert(record, conn=nil)
+      result = []
+      operations_for(record, conn).each do |operation|
         case operation["op"]
         when 'i'
-          insert_record(operation, record)
-        when 'ur'
-          update_record(operation, record)
+          result << insert_record(operation, record)
+        when 'u', 'ur'
+          result << update_record(operation, record)
         when 'c'
-          command_record(operation, record)
+          result << command_record(operation, record)
         when 'd'
-          remove_record(operation, record)
+          result << remove_record(operation, record)
+        when 'n'
+          # keepOplogAlive requests - safe to ignore?
         else
-          # ¯\_(ツ)_/¯
-          # u, n
+          raise "Unrecognized op: #{operation["op"]} (#{record.inspect})"
         end
       end
     end
