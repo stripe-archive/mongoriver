@@ -110,7 +110,8 @@ describe 'Mongoriver::Toku' do
 
       collection = stub()
       conn = stub(:db => stub(:collection => collection))
-      collection.expects(:find).with({'_id.oid' => 'refref'}).returns(refs)
+      collection.expects(:find)
+        .returns(refs)
 
       expected = Mongoriver::Toku.convert(create_op(operations))
       got = Mongoriver::Toku.convert({

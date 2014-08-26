@@ -11,13 +11,12 @@ module Mongoriver
       if record["ops"]
         return record["ops"]
       end
-      # TODO: does this need to be sorted by seq?
-      ref = record['ref']
-      refs = conn.db('local').collection('oplog.refs').find({"_id.oid" => ref})
+      refs_coll = conn.db('local').collection('oplog.refs')
+      mongo_opts = {:sort => [['seq', 1]], :timeout => false}
+
+      refs = refs_coll.find({"_id.oid" => record['ref']}, mongo_opts).to_a
       refs.map { |r| r["ops"] }.flatten
     end
-
-    # TODO: query for latest, planner for latest
 
     # Convert hash representing a tokumx oplog record to mongodb oplog records.
     # 
@@ -25,7 +24,7 @@ module Mongoriver
     #   1) Unlike mongo oplog, the timestamps will not be monotonically
     #      increasing
     #   2) h fields (unique ids) will also not be unique on multi-updates
-    #   3) operations marked by 'n' toku are ignored, as these do <TODO: explain>
+    #   3) operations marked by 'n' toku are ignored, as these are non-ops
     # @see http://www.tokutek.com/2014/03/comparing-a-tokumx-and-mongodb-oplog-entry/
     # @returns Array<Hash> List of mongodb oplog records.
     def self.convert(record, conn=nil)
@@ -85,7 +84,7 @@ module Mongoriver
         # "v" => 1,
         "op" => "d",
         "ns" => operation["ns"],
-        # "b" => true, # TODO: ???
+        # "b" => true, # TODO: what does this signify?
         "o" => { "_id" => operation["o"]["_id"] }
       }
     end
@@ -103,7 +102,6 @@ module Mongoriver
 
 
     def self.update_record(operation, full_record, is_ur_record)
-      # TODO: ur == multi update?
       ({
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
