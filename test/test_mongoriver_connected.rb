@@ -30,6 +30,7 @@ describe 'connected tests' do
       @stream = Mongoriver::Stream.new(@tailer, @outlet)
 
       @tail_from = @tailer.most_recent_timestamp.seconds + 1
+      puts "Latest is #{Time.at @tail_from}"
       sleep(1)
     end
 

@@ -16,11 +16,16 @@ module Mongoriver
       @stop = false
 
       connect_upstream
+      @toku_convert = Mongoriver::Toku.conversion_needed?(@upstream_conn)
     end
 
     def most_recent_timestamp
-      record = oplog_collection.find_one({}, :sort => [['$natural', -1]])
-      record['ts']
+      record = oplog_collection.find_one({}, :sort => [['ts', -1]])
+      if @toku_convert
+        return Mongoriver::Toku.timestamp(record)
+      else
+        return record['ts']
+      end
     end
 
     def connect_upstream
@@ -74,11 +79,7 @@ module Mongoriver
     def tail(opts = {})
       raise "Already tailing the oplog!" if @cursor
 
-      query = opts[:filter] || {}
-      if ts = opts[:from]
-        # Maybe if ts is old enough, just start from the beginning?
-        query['ts'] = { '$gte' => ts }
-      end
+      query = build_tail_query(opts)
 
       mongo_opts = {:timeout => false}.merge(opts[:mongo_opts] || {})
 
@@ -87,7 +88,7 @@ module Mongoriver
         oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY) if query['ts']
         oplog.add_option(Mongo::Constants::OP_QUERY_AWAIT_DATA) unless opts[:dont_wait]
 
-        log.info("Starting oplog stream from #{ts || 'start'}")
+        log.info("Starting oplog stream from #{query['ts'] || 'start'}")
         @cursor = oplog
       end
     end
@@ -100,11 +101,22 @@ module Mongoriver
 
     def stream(limit=nil)
       count = 0
+      puts "#{@cursor.has_next?}"
       while !@stop && @cursor.has_next?
         count += 1
         break if limit && count >= limit
 
-        yield @cursor.next
+        record = @cursor.next
+        puts "Got record: #{record}, #{@toku_convert}"
+
+        if @toku_convert
+          converted = Toku.convert(record, @upstream_conn)
+          converted.each do |mongo_record|
+            yield mongo_record
+          end
+        else
+          yield record
+        end
       end
 
       return @cursor.has_next?
@@ -118,6 +130,21 @@ module Mongoriver
       @cursor.close if @cursor
       @cursor = nil
       @stop = false
+    end
+
+    private
+    def build_tail_query(opts = {})
+      query = opts[:filter] || {}
+      # TODO: not like this with toku
+      if opts[:from]
+        # Maybe if ts is old enough, just start from the beginning?
+        # TODO: be smarter here, can cut down on code
+        if @toku_convert
+          opts[:from] = Time.at(opts[:from].seconds)
+        end
+        query['ts'] = { '$gte' => opts[:from] }
+      end
+      query
     end
   end
 end

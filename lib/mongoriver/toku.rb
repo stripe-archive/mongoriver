@@ -3,11 +3,11 @@ module Mongoriver
   module Toku
     # @returns true if conn is a TokuMX database and the oplog records need to 
     #               be converted 
-    def self.conversion_needed(conn)
+    def self.conversion_needed?(conn)
       conn.server_info.has_key? "tokumxVersion"
     end
 
-    def operations_for(record, conn=nil)
+    def self.operations_for(record, conn=nil)
       if record["ops"]
         return record["ops"]
       end
@@ -33,8 +33,10 @@ module Mongoriver
         case operation["op"]
         when 'i'
           result << insert_record(operation, record)
-        when 'u', 'ur'
-          result << update_record(operation, record)
+        when 'ur'
+          result << update_record(operation, record, true)
+        when 'u'
+          result << update_record(operation, record, false)
         when 'c'
           result << command_record(operation, record)
         when 'd'
@@ -45,13 +47,15 @@ module Mongoriver
           raise "Unrecognized op: #{operation["op"]} (#{record.inspect})"
         end
       end
+
+      result
     end
 
     private
     def self.timestamp(full_record)
       # Note that this loses the monotonically increasing property, if not
       # lost before.
-      BSON::TimeStamp(full_record["ts"].to_i, 0)
+      BSON::Timestamp.new(full_record["ts"].to_i, 0)
     end
 
     def self.insert_record(operation, full_record)
@@ -81,7 +85,7 @@ module Mongoriver
         "op" => "d",
         "ns" => operation["ns"],
         # "b" => true, # ???
-        "o" => operation["o"]
+        "o" => { "_id" => operation["o"]["_id"] }
       }
     end
 
@@ -97,19 +101,29 @@ module Mongoriver
     end
 
 
-    def self.update_record(operation, full_record)
+    def self.update_record(operation, full_record, is_ur)
       # Note that the o2 field will have some extra info compared to mongo oplog
+      # u and ur differ here
 
-      {
+      result = {
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
         # "v" => nil,
         "op" => "u",
         "ns" => operation["ns"],
         # { _id: BSON::ObjectId } what object was updated
-        "o2" => operation["o"],
-        "o" => operation["m"]
+        "o2" => { "_id" => operation["o"]["_id"] },
+        # "o" => operation["m"]
       }
+      if is_ur
+        return result.merge({
+          "o" => operation["m"],
+        })
+      else
+        return result.merge({
+          "o" => operation["o2"],
+        })
+      end
     end
   end
 end
