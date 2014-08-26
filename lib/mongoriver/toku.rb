@@ -12,6 +12,7 @@ module Mongoriver
         return record["ops"]
       end
       # TODO: does this need to be sorted by seq?
+      ref = record['ref']
       refs = conn.db('local').collection('oplog.refs').find({"_id.oid" => ref})
       refs.map { |r| r["ops"] }.flatten
     end
@@ -42,7 +43,7 @@ module Mongoriver
         when 'd'
           result << remove_record(operation, record)
         when 'n'
-          # keepOplogAlive requests - safe to ignore?
+          # keepOplogAlive requests - safe to ignore
         else
           raise "Unrecognized op: #{operation["op"]} (#{record.inspect})"
         end

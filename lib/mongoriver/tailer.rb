@@ -2,7 +2,7 @@ module Mongoriver
   class Tailer
     include Mongoriver::Logging
 
-    attr_reader :upstream_conn
+    attr_reader :upstream_connon
     attr_reader :oplog
 
     def initialize(upstreams, type, oplog = "oplog.rs")
@@ -109,8 +109,8 @@ module Mongoriver
 
         if @toku_convert
           converted = Toku.convert(record, @upstream_conn)
-          converted.each do |mongo_record|
-            yield mongo_record
+          converted.each do |mongo_oplog_record|
+            yield mongo_oplog_record
           end
         else
           yield record
@@ -133,9 +133,9 @@ module Mongoriver
     private
     def build_tail_query(opts = {})
       query = opts[:filter] || {}
-      # TODO: not like this with toku
       if opts[:from]
         # Maybe if ts is old enough, just start from the beginning?
+        # TODO: this should probably be something else?
         # TODO: be smarter here, can cut down on code
         if @toku_convert
           opts[:from] = Time.at(opts[:from].seconds)

@@ -5,7 +5,7 @@ require 'mocha/setup'
 
 describe 'Mongoriver::Toku' do
   def create_op(ops)
-    ts = Time.now.to_i
+    ts = Time.now
     ops = ops.map { |op| op['ns'] ||= 'foo.bar'; op }
     {
       '_id' => BSON::Binary.new,
@@ -94,5 +94,34 @@ describe 'Mongoriver::Toku' do
         'o' => {'create' => 'bar', 'capped' => true, 'size' => 10}
       }))
     end 
+  end
+
+  describe 'large transactions are joined by convert' do
+    it 'should yield the same result as separate ops' do
+      operations = [
+        {'op'=>'i', 'o'=>{'_id'=>'baz', 'a' => 5}},
+        {'op'=>'i', 'o'=>{'_id'=>'zoo', 'b' => 6}}
+      ]
+
+      refs = [
+        {'_id' => {'_oid' => 'refref'}, 'ops' => [operations[0]]},
+        {'_id' => {'_oid' => 'refref'}, 'ops' => [operations[1]]}
+      ]
+
+      collection = stub()
+      conn = stub(:db => stub(:collection => collection))
+      collection.expects(:find).with({'_id.oid' => 'refref'}).returns(refs)
+
+      expected = Mongoriver::Toku.convert(create_op(operations))
+      got = Mongoriver::Toku.convert({
+        '_id' => BSON::Binary.new,
+        'ts' => Time.now,
+        'h' => 1234,
+        'a' => true,
+        'ref' => 'refref'
+      }, conn)
+
+      assert_equal(expected, got)
+    end
   end
 end

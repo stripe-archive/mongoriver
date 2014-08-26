@@ -81,6 +81,7 @@ module Mongoriver
 
       db_name, collection_name = parse_ns(ns)
       assert(db_name, "nil db name #{db_name.inspect} for #{entry.inspect}")
+
       case op
       when 'i'
         handle_insert(db_name, collection_name, data)
