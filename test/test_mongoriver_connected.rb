@@ -29,8 +29,7 @@ describe 'connected tests' do
 
       @stream = Mongoriver::Stream.new(@tailer, @outlet)
 
-      @tail_from = @tailer.most_recent_timestamp.seconds + 1
-      sleep(1)
+      @tail_from = @tailer.most_recent_operation
     end
 
     it 'triggers the correct ops in the correct order' do

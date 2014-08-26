@@ -2,8 +2,9 @@ module Mongoriver
   class Tailer
     include Mongoriver::Logging
 
-    attr_reader :upstream_connon
+    attr_reader :upstream_conn
     attr_reader :oplog
+    attr_reader :database_type
 
     def initialize(upstreams, type, oplog = "oplog.rs")
       @upstreams = upstreams
@@ -16,14 +17,34 @@ module Mongoriver
       @stop = false
 
       connect_upstream
-      @toku_convert = Mongoriver::Toku.conversion_needed?(@upstream_conn)
+      @database_type = Mongoriver::Toku.conversion_needed?(@upstream_conn) ? :toku : :mongo
     end
 
-    def most_recent_timestamp
+    # Find the most recent entry in oplog and return a placeholder for that 
+    # position. The placeholder can be passed to the tail function (or run_forever)
+    # and the tailer will start tailing after that.
+    #
+    # @return [BSON::Timestamp] if mongo
+    # @return [BSON::Timestamp] if tokumx
+    def most_recent_operation
+      case database_type
+      when :mongo
+        record = oplog_collection.find_one({}, :sort => [['$natural', -1]])
+        return record['ts']
+      when :toku
+        record = oplog_collection.find_one({}, :sort => [['_id', -1]])
+        return record['_id']
+      end
+    end
+
+    # @return [Time] timestamp of the last oplog entry.
+    def latest_timestamp
       record = oplog_collection.find_one({}, :sort => [['ts', -1]])
-      if @toku_convert
-        return Mongoriver::Toku.timestamp(record)
-      else
+
+      case database_type
+      when :mongo
+        return Time.at(record['ts'].seconds)
+      when :toku
         return record['ts']
       end
     end
@@ -76,6 +97,14 @@ module Mongoriver
       @upstream_conn.db('local').collection(oplog)
     end
 
+    # Start tailing the oplog.
+    # 
+    # @param [Hash]
+    # @option opts [BSON::Timestamp, BSON::Binary] :from Placeholder indicating 
+    #           where to start the query from. Binary value is used for tokumx.
+    #           The timestamp is non-inclusive.
+    # @option opts [Hash] :filter Extra filters for the query.
+    # @option opts [Bool] :dont_wait(false) 
     def tail(opts = {})
       raise "Already tailing the oplog!" if @cursor
 
@@ -88,7 +117,7 @@ module Mongoriver
         oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY) if query['ts']
         oplog.add_option(Mongo::Constants::OP_QUERY_AWAIT_DATA) unless opts[:dont_wait]
 
-        log.info("Starting oplog stream from #{query['ts'] || 'start'}")
+        log.info("Starting oplog stream from #{opts['from'] || 'start'}")
         @cursor = oplog
       end
     end
@@ -99,7 +128,7 @@ module Mongoriver
       tail(opts)
     end
 
-    def stream(limit=nil)
+    def stream(limit=nil, &blk)
       count = 0
       while !@stop && @cursor.has_next?
         count += 1
@@ -107,13 +136,12 @@ module Mongoriver
 
         record = @cursor.next
 
-        if @toku_convert
+        case database_type
+        when :mongo
+          blk.call(record)
+        when :toku
           converted = Toku.convert(record, @upstream_conn)
-          converted.each do |mongo_oplog_record|
-            yield mongo_oplog_record
-          end
-        else
-          yield record
+          converted.each(&blk)
         end
       end
 
@@ -133,15 +161,22 @@ module Mongoriver
     private
     def build_tail_query(opts = {})
       query = opts[:filter] || {}
-      if opts[:from]
-        # Maybe if ts is old enough, just start from the beginning?
-        # TODO: this should probably be something else?
-        # TODO: be smarter here, can cut down on code
-        if @toku_convert
-          opts[:from] = Time.at(opts[:from].seconds)
-        end
-        query['ts'] = { '$gte' => opts[:from] }
+      return query unless opts[:from]
+      # Maybe if ts is old enough, just start from the beginning?
+
+      if (from = opts[:from]).is_a? Time
+        from = BSON::Timestamp(opts[:from].to_i, 0)
       end
+
+      if from.is_a? BSON::Timestamp
+        if database_type == :toku
+          from = Time.at(from.seconds)
+        end
+        query['ts'] = { '$gt' => from }
+      elsif from.is_a? BSON::Binary
+        query['_id'] = { '$gt' => from }
+      end
+
       query
     end
   end
