@@ -17,12 +17,21 @@ module Mongoriver
 
     def read_state
       row = @state_collection.find_one(:service => @service)
-      row ? row['state'] : nil
+      return nil unless row
+
+      # Try to do seamless upgrades from old mongoriver versions
+      case row['v']
+      when nil
+        ts = row['timestamp']
+        return {:placeholder => ts, :time => Time.at(ts.seconds)}
+      when 1
+        return row['state']
+      end
     end
 
     def write_state(state)
-      @state_collection.update({service: @service},
-        {service: @service, state: state}, upsert: true)
+      @state_collection.update({:service => @service},
+        {:service => @service, :state => state, :v => 1}, :upsert => true)
     end
   end
 end

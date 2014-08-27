@@ -21,7 +21,7 @@ module Mongoriver
     end
 
     def current_time
-     Time.at(connection_config['localTime'])
+      Time.at(connection_config['localTime'])
     end
 
     def stream(limit=nil)
@@ -34,17 +34,14 @@ module Mongoriver
         yield entry
 
         found_entry = true
-        @last_read = {
-          time: Time.at(entry['ts'].seconds),
-          placeholder: placeholder(entry)
-        }
+        @last_read = record_for(entry)
         maybe_save_state unless @batch
       end
 
       if !found_entry && !entries_left
-        @last_read_time = {
-          time: start_time,
-          placeholder: nil
+        @last_read = {
+          :time => start_time,
+          :placeholder => nil
         }
         maybe_save_state unless @batch
       end
@@ -68,13 +65,15 @@ module Mongoriver
     # Read the most recent timestamp of a read from storage.
     # Return nil if nothing was found.
     def read_timestamp
-      return read_state[:time]
+      state = read_state || {}
+      return state[:time]
     end
 
     # Read the most recent placeholder from storage.
     # Return nil if nothing was found.
     def read_placeholder
-      return read_state[:placeholder]
+      state = read_state || {}
+      return state[:placeholder]
     end
 
     # Persist current state. Implement this!

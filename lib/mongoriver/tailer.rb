@@ -34,16 +34,11 @@ module Mongoriver
       end
     end
 
-    # Find the most recent entry in oplog and return a placeholder for that
-    # position. The placeholder can be passed to the tail function (or run_forever)
-    # and the tailer will start tailing after that.
-    def most_recent_operation
-      placeholder(latest_oplog_entry)
-    end
-
-    # @return [Time] timestamp of the last oplog entry.
-    def latest_timestamp
-      record = latest_oplog_entry
+    # @return [Time] timestamp of the last oplog entry or the entry passed as param
+    def timestamp(record)
+      unless record
+        record = latest_oplog_entry
+      end
 
       case database_type
       when :mongo
@@ -51,6 +46,31 @@ module Mongoriver
       when :toku
         return record['ts']
       end
+    end
+
+    # Find the most recent entry in oplog and return a placeholder for that
+    # position. The placeholder can be passed to the tail function (or run_forever)
+    # and the tailer will start tailing after that.
+    def most_recent_operation
+      placeholder(latest_oplog_entry)
+    end
+
+    # state to save to the database for this record
+    def state_for(record)
+      {
+        :time => timestamp(record),
+        :placeholder => placeholder(record)
+      }
+    end
+
+    def latest_oplog_entry
+      case database_type
+      when :mongo
+        record = oplog_collection.find_one({}, :sort => [['$natural', -1]])
+      when :toku
+        record = oplog_collection.find_one({}, :sort => [['_id', -1]])
+      end
+      record
     end
 
     def connect_upstream
@@ -179,16 +199,6 @@ module Mongoriver
       end
 
       query
-    end
-
-    def latest_oplog_entry
-      case database_type
-      when :mongo
-        record = oplog_collection.find_one({}, :sort => [['$natural', -1]])
-      when :toku
-        record = oplog_collection.find_one({}, :sort => [['_id', -1]])
-      end
-      record
     end
   end
 end
