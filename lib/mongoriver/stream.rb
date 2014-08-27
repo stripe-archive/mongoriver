@@ -21,10 +21,11 @@ module Mongoriver
       @stats
     end
 
-    def run_forever(starting_timestamp=nil)
-      if starting_timestamp
-        @tailer.tail(:from => starting_timestamp)
-        #optime_from_ts(starting_timestamp))
+    # @param placeholder [BSON::Timestamp, BSON::Binary] placeholder to start
+    #             following the oplog from. @see Tailer#most_recent_operation
+    def run_forever(placeholder=nil)
+      if placeholder
+        @tailer.tail(:from => placeholder)
       else
         @tailer.tail
       end
@@ -42,19 +43,6 @@ module Mongoriver
     end
 
     private
-
-    def optime_from_ts(timestamp)
-      if timestamp.is_a?(Integer)
-        if timestamp >= 0
-          BSON::Timestamp.new(timestamp, 0)
-        else
-          raise "Invalid optime: #{timestamp}"
-        end
-      else
-        raise "Unrecognized type #{timestamp.class} (#{timestamp.inspect}) " \
-              "for start_timestamp"
-      end
-    end
 
     def trigger(name, *args)
       signature = "#{name}(" + args.map { |arg| arg.inspect }.join(', ') + ")"
@@ -115,13 +103,13 @@ module Mongoriver
 
     def handle_create_index(spec)
       db_name, collection_name = parse_ns(spec['ns'])
-      index_key = spec['key'].map { |field, dir|
+      index_key = spec['key'].map do |field, dir|
         if dir.is_a?(Numeric)
           [field, dir.round]
         else
           [field, dir]
         end
-      }
+      end
       options = {}
 
       spec.each do |key, value|
@@ -148,7 +136,7 @@ module Mongoriver
         index_name = data['index']
         trigger(:drop_index, db_name, deleted_from_collection, index_name)
       elsif created_collection = data['create']
-        handle_create_collection(db_name, data)
+        handle_create_collection(db_name, created_collection, data)
       elsif dropped_collection = data['drop']
         trigger(:drop_collection, db_name, dropped_collection)
       elsif old_collection_ns = data['renameCollection']
@@ -162,12 +150,11 @@ module Mongoriver
       end
     end
 
-    def handle_create_collection(db_name, data)
-      collection_name = data.delete('create')
-
+    def handle_create_collection(db_name, collection_name, data)
       options = {}
-      data.each do |k, v|
-        options[k.to_sym] = (k == 'size') ? v.round : v
+      data.each do |key, value|
+        next if key == 'create'
+        options[key.to_sym] = (key == 'size') ? value.round : value
       end
 
       trigger(:create_collection, db_name, collection_name, options)

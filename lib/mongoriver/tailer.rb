@@ -1,6 +1,7 @@
 module Mongoriver
   class Tailer
     include Mongoriver::Logging
+    include Mongoriver::Assertions
 
     attr_reader :upstream_conn
     attr_reader :oplog
@@ -25,21 +26,21 @@ module Mongoriver
     # and the tailer will start tailing after that.
     #
     # @return [BSON::Timestamp] if mongo
-    # @return [BSON::Timestamp] if tokumx
+    # @return [BSON::Binary] if tokumx
     def most_recent_operation
+      record = latest_oplog_entry
+
       case database_type
       when :mongo
-        record = oplog_collection.find_one({}, :sort => [['$natural', -1]])
         return record['ts']
       when :toku
-        record = oplog_collection.find_one({}, :sort => [['_id', -1]])
         return record['_id']
       end
     end
 
     # @return [Time] timestamp of the last oplog entry.
     def latest_timestamp
-      record = oplog_collection.find_one({}, :sort => [['ts', -1]])
+      record = latest_oplog_entry
 
       case database_type
       when :mongo
@@ -162,22 +163,29 @@ module Mongoriver
     def build_tail_query(opts = {})
       query = opts[:filter] || {}
       return query unless opts[:from]
-      # Maybe if ts is old enough, just start from the beginning?
 
-      if (from = opts[:from]).is_a? Time
-        from = BSON::Timestamp(opts[:from].to_i, 0)
-      end
-
-      if from.is_a? BSON::Timestamp
-        if database_type == :toku
-          from = Time.at(from.seconds)
-        end
-        query['ts'] = { '$gt' => from }
-      elsif from.is_a? BSON::Binary
-        query['_id'] = { '$gt' => from }
+      case database_type
+      when :mongo
+        assert(opts[:from].is_a?(BSON::Timestamp),
+          "For mongo databases, from must be a BSON::Timestamp")
+        query['ts'] = { '$gt' => opts[:from] }
+      when :toku
+        assert(opts[:from].is_a?(BSON::Binary),
+          "For tokumx databases, from must be a BSON::Binary")
+        query['_id'] = { '$gt' => opts[:from] }
       end
 
       query
+    end
+
+    def latest_oplog_entry
+      case database_type
+      when :mongo
+        record = oplog_collection.find_one({}, :sort => [['$natural', -1]])
+      when :toku
+        record = oplog_collection.find_one({}, :sort => [['_id', -1]])
+      end
+      record
     end
   end
 end

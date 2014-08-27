@@ -1,6 +1,6 @@
 module Mongoriver
   # This module deals with converting TokuMX oplog records into mongodb oplogs. 
-  module Toku
+  class Toku
     # @returns true if conn is a TokuMX database and the oplog records need to 
     #               be converted 
     def self.conversion_needed?(conn)
@@ -51,7 +51,6 @@ module Mongoriver
       result
     end
 
-    private
     def self.timestamp(full_record)
       # Note that this loses the monotonically increasing property, if not
       # lost before.
@@ -113,5 +112,8 @@ module Mongoriver
         "o" => operation[is_ur_record ? "m" : "o2"]
       })
     end
+
+    private_class_method :timestamp, :insert_record, :update_record
+    private_class_method :remove_record, :command_record
   end
 end
