@@ -21,21 +21,24 @@ module Mongoriver
       @database_type = Mongoriver::Toku.conversion_needed?(@upstream_conn) ? :toku : :mongo
     end
 
-    # Find the most recent entry in oplog and return a placeholder for that 
-    # position. The placeholder can be passed to the tail function (or run_forever)
-    # and the tailer will start tailing after that.
+    # Return a placeholder for a record object
     #
     # @return [BSON::Timestamp] if mongo
     # @return [BSON::Binary] if tokumx
-    def most_recent_operation
-      record = latest_oplog_entry
-
+    def placeholder(record)
       case database_type
       when :mongo
         return record['ts']
       when :toku
         return record['_id']
       end
+    end
+
+    # Find the most recent entry in oplog and return a placeholder for that
+    # position. The placeholder can be passed to the tail function (or run_forever)
+    # and the tailer will start tailing after that.
+    def most_recent_operation
+      placeholder(latest_oplog_entry)
     end
 
     # @return [Time] timestamp of the last oplog entry.
