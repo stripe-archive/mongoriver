@@ -88,7 +88,7 @@ describe 'connected tests' do
     it 'ignores everything before the operation passed in' do
       name = '_test_mongoriver'
 
-      @mongo[name][name].insert(a: 5)
+      @mongo[name][name].insert(:a => 5)
 
       @outlet.expects(:insert).never
       @outlet.expects(:drop_database).with(anything) { @stream.stop }

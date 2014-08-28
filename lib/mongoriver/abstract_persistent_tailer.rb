@@ -6,26 +6,25 @@ module Mongoriver
   # tailing.
 
   class AbstractPersistentTailer < Tailer
+    attr_reader :last_saved, :last_read
+
     def initialize(upstream, type, opts={})
       raise "You can't instantiate an AbstractPersistentTailer -- did you want PersistentTailer? " if self.class == AbstractPersistentTailer
       super(upstream, type)
 
-      @last_saved       = nil
+      @last_saved       = {}
       @batch            = opts[:batch]
-      @last_read        = nil
+      @last_read        = {}
     end
 
     def tail(opts={})
-      opts[:from] ||= most_recent_operation
+      opts[:from] ||= read_placeholder
+      log.info("Persistent tail options: #{opts}")
       super(opts)
     end
 
-    def current_time
-      Time.at(connection_config['localTime'])
-    end
-
     def stream(limit=nil)
-      start_time = current_time
+      start_time = Time.at(connection_config['localTime'])
       found_entry = false
 
       # Sketchy logic - yield results from Tailer.stream
@@ -34,19 +33,24 @@ module Mongoriver
         yield entry
 
         found_entry = true
-        @last_read = record_for(entry)
+        @last_read = state_for(entry)
         maybe_save_state unless @batch
       end
 
       if !found_entry && !entries_left
-        @last_read = {
-          :time => start_time,
-          :placeholder => nil
-        }
+        @last_read['time'] = start_time
         maybe_save_state unless @batch
       end
 
       return entries_left
+    end
+
+    # state to save to the database for this record
+    def state_for(record)
+      {
+        'time' => Time.at(record['ts'].seconds),
+        'placeholder' => placeholder(record)
+      }
     end
 
     def batch_done
@@ -56,8 +60,8 @@ module Mongoriver
 
     # Get the current state from storage. Implement this!
     # @returns state [Hash, nil]
-    # @option state [BSON::Timestamp, BSON::Binary] :placeholder
-    # @option state [Time] :timestamp
+    # @option state [BSON::Timestamp, BSON::Binary] 'placeholder'
+    # @option state [Time] 'timestamp'
     def read_state
       raise "read_state unimplemented!"
     end
@@ -66,34 +70,38 @@ module Mongoriver
     # Return nil if nothing was found.
     def read_timestamp
       state = read_state || {}
-      return state[:time]
+      return state['time']
     end
 
     # Read the most recent placeholder from storage.
     # Return nil if nothing was found.
     def read_placeholder
       state = read_state || {}
-      return state[:placeholder]
+      return state['placeholder']
     end
 
     # Persist current state. Implement this!
     # @param state [Hash]
-    # @option state [BSON::Timestamp, BSON::Binary] :placeholder
-    # @option state [Time] :timestamp
+    # @option state [BSON::Timestamp, BSON::Binary] 'placeholder'
+    # @option state [Time] 'timestamp'
     def write_state(state)
       raise "write_state unimplemented!"
     end
 
-    def save_state
-      write_state(@last_read)
-      @last_saved = @last_read
-      log.info("Saved state: #{@last_read[:placeholder]} (#{last_saved[:time]})")
+    def save_state(state=nil)
+      if state.nil?
+        state = last_read
+      end
+      write_state(state)
+      @last_saved = state
+      log.info("\nSaved state: #{last_saved} - #{read_state}")
     end
 
     def maybe_save_state
       # Write placeholder once a minute
-      return unless @last_read
-      if @last_saved.nil? || @last_read[:time] - @last_saved[:time] > 60.0
+
+      return unless last_read['time']
+      if last_saved['time'].nil? || last_read['time'] - last_saved['time'] > 60.0
         save_state
       end
     end

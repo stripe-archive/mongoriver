@@ -22,8 +22,12 @@ module Mongoriver
       # Try to do seamless upgrades from old mongoriver versions
       case row['v']
       when nil
-        ts = row['timestamp']
-        return {:placeholder => ts, :time => Time.at(ts.seconds)}
+        log.warning("Old style timestamp found in database. Converting!")
+        ts = Time.at(row['timestamp'].seconds)
+        return {
+          'placeholder' => most_recent_operation(ts),
+          'time' => ts
+        }
       when 1
         return row['state']
       end

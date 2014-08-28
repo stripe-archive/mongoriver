@@ -26,25 +26,12 @@ module Mongoriver
     # @return [BSON::Timestamp] if mongo
     # @return [BSON::Binary] if tokumx
     def placeholder(record)
+      return nil unless record
       case database_type
       when :mongo
         return record['ts']
       when :toku
         return record['_id']
-      end
-    end
-
-    # @return [Time] timestamp of the last oplog entry or the entry passed as param
-    def timestamp(record)
-      unless record
-        record = latest_oplog_entry
-      end
-
-      case database_type
-      when :mongo
-        return Time.at(record['ts'].seconds)
-      when :toku
-        return record['ts']
       end
     end
 
@@ -54,14 +41,6 @@ module Mongoriver
     # If before_time is given, it will return the latest placeholder before (or at) time.
     def most_recent_operation(before_time=nil)
       placeholder(latest_oplog_entry(before_time))
-    end
-
-    # state to save to the database for this record
-    def state_for(record)
-      {
-        :time => timestamp(record),
-        :placeholder => placeholder(record)
-      }
     end
 
     def latest_oplog_entry(before_time=nil)
@@ -153,7 +132,7 @@ module Mongoriver
         oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY) if query['ts']
         oplog.add_option(Mongo::Constants::OP_QUERY_AWAIT_DATA) unless opts[:dont_wait]
 
-        log.info("Starting oplog stream from #{opts['from'] || 'start'}")
+        log.info("Starting oplog stream from #{opts[:from] || 'start'}")
         @cursor = oplog
       end
     end
@@ -202,11 +181,11 @@ module Mongoriver
       case database_type
       when :mongo
         assert(opts[:from].is_a?(BSON::Timestamp),
-          "For mongo databases, from must be a BSON::Timestamp")
+          "For mongo databases, tail :from must be a BSON::Timestamp")
         query['ts'] = { '$gt' => opts[:from] }
       when :toku
         assert(opts[:from].is_a?(BSON::Binary),
-          "For tokumx databases, from must be a BSON::Binary")
+          "For tokumx databases, tail :from must be a BSON::Binary")
         query['_id'] = { '$gt' => opts[:from] }
       end
 

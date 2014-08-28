@@ -59,6 +59,7 @@ module Mongoriver
 
     def self.insert_record(operation, full_record)
       {
+        "_id" => full_record["_id"],
         # Monotonically increasing timestamp in mongodb in oplog.
         # e.g. <BSON::Timestamp:0x000000100a81c8 @increment=1, @seconds=1408995488>
         "ts" => timestamp(full_record),
@@ -78,6 +79,7 @@ module Mongoriver
 
     def self.remove_record(operation, full_record)
       {
+        "_id" => full_record["_id"],
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
         # "v" => 1,
@@ -90,6 +92,7 @@ module Mongoriver
 
     def self.command_record(operation, full_record)
       {
+        "_id" => full_record["_id"],
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
         # "v" => 1,
@@ -102,6 +105,7 @@ module Mongoriver
 
     def self.update_record(operation, full_record, is_ur_record)
       ({
+        "_id" => full_record["_id"],
         "ts" => timestamp(full_record),
         "h" => full_record["h"],
         # "v" => 1,
