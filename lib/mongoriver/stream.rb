@@ -27,7 +27,7 @@ module Mongoriver
       if placeholder.is_a?(Time)
         placeholder = @tailer.most_recent_operation(placeholder)
       end
-      log.info("Start placeholder: #{placeholder.inspect}")
+      log.debug("Start placeholder: #{placeholder.inspect}")
       @tailer.tail(:from => placeholder)
 
       until @stop

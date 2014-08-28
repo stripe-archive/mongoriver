@@ -19,7 +19,7 @@ module Mongoriver
 
     def tail(opts={})
       opts[:from] ||= read_placeholder
-      log.info("Persistent tail options: #{opts}")
+      log.debug("Persistent tail options: #{opts}")
       super(opts)
     end
 

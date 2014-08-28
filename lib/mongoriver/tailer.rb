@@ -132,7 +132,7 @@ module Mongoriver
         oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY) if query['ts']
         oplog.add_option(Mongo::Constants::OP_QUERY_AWAIT_DATA) unless opts[:dont_wait]
 
-        log.info("Starting oplog stream from #{opts[:from] || 'start'}")
+        log.debug("Starting oplog stream from #{opts[:from] || 'start'}")
         @cursor = oplog
       end
     end
