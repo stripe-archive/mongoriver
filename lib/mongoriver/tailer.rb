@@ -51,8 +51,9 @@ module Mongoriver
     # Find the most recent entry in oplog and return a placeholder for that
     # position. The placeholder can be passed to the tail function (or run_forever)
     # and the tailer will start tailing after that.
-    def most_recent_operation
-      placeholder(latest_oplog_entry)
+    # If before_time is given, it will return the latest placeholder before (or at) time.
+    def most_recent_operation(before_time=nil)
+      placeholder(latest_oplog_entry(before_time))
     end
 
     # state to save to the database for this record
@@ -63,12 +64,23 @@ module Mongoriver
       }
     end
 
-    def latest_oplog_entry
+    def latest_oplog_entry(before_time=nil)
+      query = {}
+      if before_time
+        case database_type
+        when :mongo
+          ts = BSON::Timestamp(before_time.to_i + 1, 0)
+        when :toku
+          ts = before_time + 1
+        end
+        query = { 'ts' => { '$lt' => ts } }
+      end
+
       case database_type
       when :mongo
-        record = oplog_collection.find_one({}, :sort => [['$natural', -1]])
+        record = oplog_collection.find_one(query, :sort => [['$natural', -1]])
       when :toku
-        record = oplog_collection.find_one({}, :sort => [['_id', -1]])
+        record = oplog_collection.find_one(query, :sort => [['_id', -1]])
       end
       record
     end

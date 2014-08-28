@@ -21,14 +21,13 @@ module Mongoriver
       @stats
     end
 
-    # @param placeholder [BSON::Timestamp, BSON::Binary] placeholder to start
+    # @param placeholder [BSON::Timestamp, BSON::Binary, Time] placeholder to start
     #             following the oplog from. @see Tailer#most_recent_operation
     def run_forever(placeholder=nil)
-      if placeholder
-        @tailer.tail(:from => placeholder)
-      else
-        @tailer.tail
+      if placeholder.is_a?(Time)
+        placeholder = @tailer.most_recent_operation(placeholder)
       end
+      @tailer.tail(:from => placeholder)
 
       until @stop
         @tailer.stream do |op|

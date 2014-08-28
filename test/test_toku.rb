@@ -41,13 +41,13 @@ describe 'Mongoriver::Toku' do
 
     it 'triggers update (ur)' do
       # collection.update({a:true}, {'$set' => {c: 7}}, multi: true)
-      @outlet.expects(:update).once.with('foo', 'bar', {'_id' => 'baz'}, {'b' => 2})
+      @outlet.expects(:update).once.with('foo', 'bar', {'_id' => 'baz'}, {'$set' => {'c' => 7}})
 
       @stream.send(:handle_op, convert({
         'op' => 'ur',
         'pk' => {'' => 'baz'},
         'o' => {'_id' => 'baz', 'a' => true},
-        'm' => {'b' => 2}
+        'm' => {'$set' => {'c' => 7}}
       }))
     end
 

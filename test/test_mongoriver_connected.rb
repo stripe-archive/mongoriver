@@ -16,6 +16,12 @@ def connect
   end
 end
 
+def run_stream(stream, start)
+  Timeout::timeout(30) do
+    @stream.run_forever(start)
+  end
+end
+
 describe 'connected tests' do
   before do
     @mongo = connect
@@ -33,8 +39,8 @@ describe 'connected tests' do
     end
 
     it 'triggers the correct ops in the correct order' do
-      db = 'test'
-      collection = 'test'
+      db = '_test_mongoriver'
+      collection = '_test_mongoriver'
       doc = {'_id' => 'foo', 'bar' => 'baz'}
       updated_doc = doc.dup.merge('bar' => 'qux')
       index_keys = [['bar', 1]]
@@ -66,17 +72,47 @@ describe 'connected tests' do
       @mongo[db].drop_collection(collection+'_foo')
       @mongo.drop_database(db)
 
-      @stream.run_forever(@tail_from)
+      run_stream(@stream, @tail_from)
     end
 
     it 'passes options to create_collection' do
-      @outlet.expects(:create_collection).once.with('test', 'test', {:capped => true, :size => 10}) { @stream.stop }
+      @outlet.expects(:create_collection).once.with('_test_mongoriver', '_test_mongoriver', {:capped => true, :size => 10}) { @stream.stop }
       @outlet.expects(:update_optime).at_least_once.with(anything) { @stream.stop }
 
-      @mongo['test'].create_collection('test', :capped => true, :size => 10)
-      @mongo.drop_database('test')
+      @mongo['_test_mongoriver'].create_collection('_test_mongoriver', :capped => true, :size => 10)
+      @mongo.drop_database('_test_mongoriver')
 
-      @stream.run_forever(@tail_from)
+      run_stream(@stream, @tail_from)
+    end
+
+    it 'ignores everything before the operation passed in' do
+      name = '_test_mongoriver'
+
+      @mongo[name][name].insert(a: 5)
+
+      @outlet.expects(:insert).never
+      @outlet.expects(:drop_database).with(anything) { @stream.stop }
+
+      start = @tailer.most_recent_operation
+      @mongo.drop_database(name)
+      run_stream(@stream, start)
+    end
+
+    it 'allows passing in a timestamp for the stream following as well' do
+      name = '_test_mongoriver2'
+
+      @outlet.expects(:insert).with do |db_name, col_name, value|
+        db_name != name || value['record'] == 'value'
+      end
+
+      @outlet.expects(:update).with do |db_name, col_name, selector, update|
+        @stream.stop if update['record'] == 'newvalue'
+        db_name != name || update['record'] == 'newvalue'
+      end
+
+      @mongo[name][name].insert('record' => 'value')
+      @mongo[name][name].update({'record' => 'value'}, {'record' => 'newvalue'})
+      run_stream(@stream, Time.now-3)
     end
   end
 end
