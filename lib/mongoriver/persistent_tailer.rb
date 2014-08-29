@@ -22,7 +22,7 @@ module Mongoriver
       # Try to do seamless upgrades from old mongoriver versions
       case row['v']
       when nil
-        log.warning("Old style timestamp found in database. Converting!")
+        log.warn("Old style timestamp found in database. Converting!")
         ts = Time.at(row['timestamp'].seconds)
         return {
           'placeholder' => most_recent_operation(ts),

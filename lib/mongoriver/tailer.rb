@@ -16,6 +16,7 @@ module Mongoriver
 
       @cursor = nil
       @stop = false
+      @streaming = false
 
       connect_upstream
       @database_type = Mongoriver::Toku.conversion_needed?(@upstream_conn) ? :toku : :mongo
@@ -48,7 +49,7 @@ module Mongoriver
       if before_time
         case database_type
         when :mongo
-          ts = BSON::Timestamp(before_time.to_i + 1, 0)
+          ts = BSON::Timestamp.new(before_time.to_i + 1, 0)
         when :toku
           ts = before_time + 1
         end
@@ -143,8 +144,13 @@ module Mongoriver
       tail(opts)
     end
 
+    def tailing
+      !@stop || @streaming
+    end
+
     def stream(limit=nil, &blk)
       count = 0
+      @streaming = true
       while !@stop && @cursor.has_next?
         count += 1
         break if limit && count >= limit
@@ -159,6 +165,7 @@ module Mongoriver
           converted.each(&blk)
         end
       end
+      @streaming = false
 
       return @cursor.has_next?
     end
