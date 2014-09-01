@@ -94,7 +94,7 @@ module Mongoriver
       end
       write_state(state)
       @last_saved = state
-      log.info("\nSaved state: #{last_saved} - #{read_state}")
+      log.info("Saved state: #{last_saved}")
     end
 
     def maybe_save_state
