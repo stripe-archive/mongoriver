@@ -35,7 +35,7 @@ describe 'connected tests' do
 
       @stream = Mongoriver::Stream.new(@tailer, @outlet)
 
-      @tail_from = @tailer.most_recent_operation
+      @tail_from = @tailer.most_recent_position
     end
 
     it 'triggers the correct ops in the correct order' do
@@ -93,7 +93,7 @@ describe 'connected tests' do
       @outlet.expects(:insert).never
       @outlet.expects(:drop_database).with(anything) { @stream.stop }
 
-      start = @tailer.most_recent_operation
+      start = @tailer.most_recent_position
       @mongo.drop_database(name)
       run_stream(@stream, start)
     end

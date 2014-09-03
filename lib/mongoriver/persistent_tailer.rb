@@ -25,7 +25,7 @@ module Mongoriver
         log.warn("Old style timestamp found in database. Converting!")
         ts = Time.at(row['timestamp'].seconds)
         return {
-          'placeholder' => most_recent_operation(ts),
+          'position' => most_recent_position(ts),
           'time' => ts
         }
       when 1

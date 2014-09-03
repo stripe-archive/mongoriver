@@ -1,7 +1,7 @@
 module Mongoriver
 
   # A variant of Tailer that automatically loads and persists the
-  # "last placeholder processes" state. See PersistentTailer for a
+  # "last position processes" state. See PersistentTailer for a
   # concrete subclass that uses the same mongod you are already
   # tailing.
 
@@ -18,7 +18,7 @@ module Mongoriver
     end
 
     def tail(opts={})
-      opts[:from] ||= read_placeholder
+      opts[:from] ||= read_position
       log.debug("Persistent tail options: #{opts}")
       super(opts)
     end
@@ -28,7 +28,7 @@ module Mongoriver
       found_entry = false
 
       # Sketchy logic - yield results from Tailer.stream
-      # if nothing is found and nothing in cursor, save the current placeholder
+      # if nothing is found and nothing in cursor, save the current position
       entries_left = super(limit) do |entry|
         yield entry
 
@@ -49,7 +49,7 @@ module Mongoriver
     def state_for(record)
       {
         'time' => Time.at(record['ts'].seconds),
-        'placeholder' => placeholder(record)
+        'position' => position(record)
       }
     end
 
@@ -60,7 +60,7 @@ module Mongoriver
 
     # Get the current state from storage. Implement this!
     # @returns state [Hash, nil]
-    # @option state [BSON::Timestamp, BSON::Binary] 'placeholder'
+    # @option state [BSON::Timestamp, BSON::Binary] 'position'
     # @option state [Time] 'timestamp'
     def read_state
       raise "read_state unimplemented!"
@@ -73,16 +73,16 @@ module Mongoriver
       return state['time']
     end
 
-    # Read the most recent placeholder from storage.
+    # Read the most recent position from storage.
     # Return nil if nothing was found.
-    def read_placeholder
+    def read_position
       state = read_state || {}
-      return state['placeholder']
+      return state['position']
     end
 
     # Persist current state. Implement this!
     # @param state [Hash]
-    # @option state [BSON::Timestamp, BSON::Binary] 'placeholder'
+    # @option state [BSON::Timestamp, BSON::Binary] 'position'
     # @option state [Time] 'timestamp'
     def write_state(state)
       raise "write_state unimplemented!"
@@ -98,7 +98,7 @@ module Mongoriver
     end
 
     def maybe_save_state
-      # Write placeholder once a minute
+      # Write position once a minute
 
       return unless last_read['time']
       if last_saved['time'].nil? || last_read['time'] - last_saved['time'] > 60.0
