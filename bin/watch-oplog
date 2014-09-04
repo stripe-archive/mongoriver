@@ -47,7 +47,7 @@ def main
     end
 
     opts.on('-s OPTIME', '--start', 'Starting optime') do |optime|
-      options[:optime] = Integer(optime)
+      options[:optime] = Time.at(optime)
     end
   end
   optparse.parse!
