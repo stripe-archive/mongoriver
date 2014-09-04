@@ -51,3 +51,10 @@ stream.run_forever(starting_timestamp)
 
 `starting_timestamp` here is the time you want the tailer to start at. We use
 this to resume interrupted tailers so that no information is lost.
+
+
+## Version history
+
+### 0.4
+
+Add support for [tokumx](http://www.tokutek.com/products/tokumx-for-mongodb/). Backwards incompatible changes to persistent tailers to accomodate that. See [UPGRADING.md](UPGRADING.md).
