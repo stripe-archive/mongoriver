@@ -8,6 +8,9 @@ module Mongoriver
   class AbstractPersistentTailer < Tailer
     attr_reader :last_saved, :last_read
 
+    # How often to save position to database
+    DEFAULT_SAVE_FREQUENCY = 60.0
+
     def initialize(upstream, type, opts={})
       raise "You can't instantiate an AbstractPersistentTailer -- did you want PersistentTailer? " if self.class == AbstractPersistentTailer
       super(upstream, type)
@@ -15,6 +18,7 @@ module Mongoriver
       @last_saved       = {}
       @batch            = opts[:batch]
       @last_read        = {}
+      @save_frequency   = opts[:save_frequency] || DEFAULT_SAVE_FREQUENCY
     end
 
     def tail(opts={})
@@ -24,7 +28,7 @@ module Mongoriver
     end
 
     def stream(limit=nil)
-      start_time = Time.at(connection_config['localTime'])
+      start_time = connection_config['localTime']
       found_entry = false
 
       # Sketchy logic - yield results from Tailer.stream
@@ -98,10 +102,8 @@ module Mongoriver
     end
 
     def maybe_save_state
-      # Write position once a minute
-
       return unless last_read['time']
-      if last_saved['time'].nil? || last_read['time'] - last_saved['time'] > 60.0
+      if last_saved['time'].nil? || last_read['time'] - last_saved['time'] > @save_frequency
         save_state
       end
     end
