@@ -17,7 +17,7 @@ module Mongoriver
 
       @last_saved       = {}
       @batch            = opts[:batch]
-      @last_read        = read_state || {}
+      @last_read        = {}
       @save_frequency   = opts[:save_frequency] || DEFAULT_SAVE_FREQUENCY
     end
 
@@ -43,7 +43,10 @@ module Mongoriver
 
       if !found_entry && !entries_left
         @last_read['time'] = start_time
-        @last_read['placeholder'] = most_recent_position(start_time)
+        if @last_read['position'].nil?
+          @last_read['position'] ||= read_position
+          @last_read['position'] ||= most_recent_position(start_time)
+        end
         maybe_save_state unless @batch
       end
 
@@ -97,6 +100,7 @@ module Mongoriver
       if state.nil?
         state = last_read
       end
+      return unless state['position']
       write_state(state)
       @last_saved = state
       log.info("Saved state: #{last_saved}")
