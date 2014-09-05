@@ -17,7 +17,7 @@ module Mongoriver
 
       @last_saved       = {}
       @batch            = opts[:batch]
-      @last_read        = {}
+      @last_read        = read_state
       @save_frequency   = opts[:save_frequency] || DEFAULT_SAVE_FREQUENCY
     end
 
