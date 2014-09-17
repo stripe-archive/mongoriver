@@ -12,7 +12,7 @@ module Mongoriver
         return record["ops"]
       end
       refs_coll = conn.db('local').collection('oplog.refs')
-      mongo_opts = {:sort => [['seq', 1]], :timeout => false}
+      mongo_opts = {:sort => [['seq', 1]]}
 
       refs = refs_coll.find({"_id.oid" => record['ref']}, mongo_opts).to_a
       refs.map { |r| r["ops"] }.flatten
