@@ -36,6 +36,18 @@ module Mongoriver
       end
     end
 
+    # Return a time for a record object
+    # @return Time
+    def time_for(record)
+      return nil unless record
+      case database_type
+      when :mongo
+        return Time.at(record['ts'].seconds)
+      when :toku
+        return record['ts']
+      end
+    end
+
     # Find the most recent entry in oplog and return a position for that
     # position. The position can be passed to the tail function (or run_forever)
     # and the tailer will start tailing after that.

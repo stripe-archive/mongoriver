@@ -53,6 +53,14 @@ module Mongoriver
       return entries_left
     end
 
+    def most_recent_state(before_time=nil)
+      record = latest_oplog_entry(before_time)
+      {
+        'time' => time_for(record),
+        'position' => position(record)
+      }
+    end
+
     # state to save to the database for this record
     def state_for(record)
       {
