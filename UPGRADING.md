@@ -2,7 +2,7 @@
 
 ## Outline
 
-This version adds support for tailing TokuMX, which uses a different oplog format from Mongo, separating the concepts of time and ordering of oplog entries. This sadly breaks most applications currently using mongoriver and will require invasive changes to persistant tailers.
+This version adds support for tailing TokuMX, which uses a different oplog format from Mongo, separating the concepts of time and ordering of oplog entries. This sadly breaks most applications currently using mongoriver and will require invasive changes to persistent tailers.
 
 More specifically - TokuMX uses `BSON::Binary` instead of `BSON::Timestamp` for keeping track of the database oplog position.
 
