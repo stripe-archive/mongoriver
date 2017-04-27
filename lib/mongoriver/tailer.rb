@@ -163,18 +163,20 @@ module Mongoriver
     def stream(limit=nil, &blk)
       count = 0
       @streaming = true
-      while !@stop && @cursor.has_next?
-        count += 1
-        break if limit && count >= limit
+      state = TailerStreamState.new(limit)
+      while !@stop && !state.break? && @cursor.has_next?
+        state.increment
 
         record = @cursor.next
 
         case database_type
         when :mongo
-          blk.call(record)
+          blk.call(record, state)
         when :toku
           converted = Toku.convert(record, @upstream_conn)
-          converted.each(&blk)
+          converted.each do |converted_record|
+            blk.call(converted_record, state)
+          end
         end
       end
       @streaming = false

@@ -8,6 +8,7 @@ require 'mongoriver/log'
 require 'mongoriver/assertions'
 
 require 'mongoriver/tailer'
+require 'mongoriver/tailer_stream_state'
 require 'mongoriver/toku'
 require 'mongoriver/abstract_persistent_tailer'
 require 'mongoriver/persistent_tailer'
