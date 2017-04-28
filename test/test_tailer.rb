@@ -1,19 +1,19 @@
-require 'mongoriver'
-require 'mongo'
 require 'minitest/autorun'
 require 'mocha/setup'
+require 'mongo'
+require 'mongoriver'
 
 describe 'Mongoriver::Tailer' do
   class CursorStub
     def initialize
       @events = []
-      @current = 0
+      @index = 0
     end
 
     def add_option(opt) end
 
     def generate_ops(max)
-      @current = 0
+      @index = 0
       (1..max).map do |id|
         @events << {
           'ts' => BSON::Timestamp.new(Time.now.to_i, 0),
@@ -27,12 +27,12 @@ describe 'Mongoriver::Tailer' do
     end
 
     def has_next?
-      @current < @events.length
+      @index < @events.length
     end
 
     def next
-      @current += 1
-      @events[@current - 1]
+      @index += 1
+      @events[@index - 1]
     end
   end
 

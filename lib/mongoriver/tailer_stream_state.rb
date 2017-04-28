@@ -8,11 +8,11 @@ module Mongoriver
       @count = 0
     end
 
-    def break?()
+    def break?
       return @break
     end
 
-    def break()
+    def break
       @break = true
     end
 
