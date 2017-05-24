@@ -2,7 +2,7 @@ require 'mongoriver'
 require 'mongo'
 require 'minitest/autorun'
 require 'mocha/setup'
-
+require_relative './cursor_stub'
 
 def mocked_mongo()
   mongo_connection = stub()
@@ -22,10 +22,10 @@ describe 'Mongoriver::PersistentTailer' do
   before do
     @service_name = "_persistenttailer_test"
 
-    db, @state_collection = mocked_mongo
+    @mongo_connection, @state_collection = mocked_mongo
 
     @tailer = Mongoriver::PersistentTailer.new(
-      [db], :existing, @service_name)
+      [@mongo_connection], :existing, @service_name)
     @state = {
       'time' => Time.now,
       'position' => 'foobar'
@@ -70,5 +70,33 @@ describe 'Mongoriver::PersistentTailer' do
     Mongoriver::Tailer.any_instance.expects(:tail).with(:from => 'foo')
 
     @tailer.tail
+  end
+
+  it 'should stream with state' do
+    # Uses admin to verify that it is a replicaset
+    admin_db = stub()
+    admin_db.expects(:command).returns({'setName' => 'replica'})
+    @mongo_connection.expects(:db).with('admin').returns(admin_db)
+    # Updates state collection when finish iteration
+    @state_collection.expects(:update)
+
+    # Oplog collection to return results
+    local_db = stub()
+    @mongo_connection.expects(:db).with('local').returns(local_db)
+    oplog_collection = stub()
+    local_db.expects(:collection).with('oplog.rs').returns(oplog_collection)
+    cursor = CursorStub.new
+    oplog_collection.expects(:find).yields(cursor)
+
+    @tailer.tail(:from => BSON::Timestamp.new(Time.now.to_i, 0))
+
+    cursor.generate_ops(10)
+
+    count = 0
+    @tailer.stream do |record, state|
+      count = state.count
+      state.break 
+    end
+    assert_equal(1, count)
   end
 end

@@ -97,7 +97,7 @@ module Mongoriver
     end
 
     def connection_config
-      @upstream_conn['admin'].command(:ismaster => 1)
+      @upstream_conn.db('admin').command(:ismaster => 1)
     end
 
     def ensure_upstream_replset!

@@ -33,8 +33,8 @@ module Mongoriver
 
       # Sketchy logic - yield results from Tailer.stream
       # if nothing is found and nothing in cursor, save the current position
-      entries_left = super(limit) do |entry|
-        yield entry
+      entries_left = super(limit) do |entry, state|
+        yield(entry, state)
 
         found_entry = true
         @last_read = state_for(entry)
