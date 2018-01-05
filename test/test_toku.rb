@@ -25,8 +25,8 @@ describe 'Mongoriver::Toku' do
 
   describe 'conversions sent to stream' do
     before do
-      buildinfo = stub(:documents => [{'buildinfo' => '1'}]) # garbage
-      conn = stub(:use => nil, :command => buildinfo)
+      server_info = stub(:documents => [ {'tokumxVersion' => '2'} ])
+      conn = stub(:use => nil, :command => server_info)
 
       @tailer = Mongoriver::Tailer.new([conn], :existing)
       @outlet = Mongoriver::AbstractOutlet.new
