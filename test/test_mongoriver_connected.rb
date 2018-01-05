@@ -9,9 +9,8 @@ MONGO_SERVER = ENV['MONGO_SERVER'] || 'localhost:27017'
 
 def connect
   begin
-    host, port = MONGO_SERVER.split(':', 2)
-    Mongo::Connection.new(host, port)
-  rescue Mongo::ConnectionFailure
+    Mongo::Client.new(MONGO_SERVER)
+  rescue Mongo::Error
     nil
   end
 end
@@ -60,7 +59,7 @@ describe 'connected tests' do
       @outlet.expects(:drop_collection).once.with(db, collection+'_foo').in_sequence(op_sequence)
       @outlet.expects(:drop_database).once.with(db) { @stream.stop }.in_sequence(op_sequence)
 
-      coll = @mongo[db][collection]
+      coll = @mongo.use(db)[collection]
       coll.insert(doc)
       coll.update({'_id' => 'foo'}, doc.merge('bar' => 'qux'))
       coll.remove({'_id' => 'foo'})
@@ -68,8 +67,8 @@ describe 'connected tests' do
       name = coll.ensure_index(index_keys)
       coll.drop_index(name)
 
-      @mongo[db].rename_collection(collection, collection+'_foo')
-      @mongo[db].drop_collection(collection+'_foo')
+      @mongo.rename_collection(collection, collection+'_foo')
+      @mongo.drop_collection(collection+'_foo')
       @mongo.drop_database(db)
 
       run_stream(@stream, @tail_from)
@@ -88,7 +87,7 @@ describe 'connected tests' do
     it 'ignores everything before the operation passed in' do
       name = '_test_mongoriver'
 
-      @mongo[name][name].insert(:a => 5)
+      @mongo.use(name)[name].insert(:a => 5)
 
       @outlet.expects(:insert).never
       @outlet.expects(:drop_database).with(anything) { @stream.stop }
@@ -110,8 +109,8 @@ describe 'connected tests' do
         db_name != name || update['record'] == 'newvalue'
       end
 
-      @mongo[name][name].insert('record' => 'value')
-      @mongo[name][name].update({'record' => 'value'}, {'record' => 'newvalue'})
+      @mongo.use(name)[name].insert('record' => 'value')
+      @mongo.use(name)[name].update({'record' => 'value'}, {'record' => 'newvalue'})
       run_stream(@stream, Time.now-3)
     end
   end

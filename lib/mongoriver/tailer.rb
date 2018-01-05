@@ -70,9 +70,9 @@ module Mongoriver
 
       case database_type
       when :mongo
-        record = oplog_collection.find_one(query, :sort => [['$natural', -1]])
+        record = oplog_collection.find(query).sort( {'$natural' => -1 } ).limit(1).first
       when :toku
-        record = oplog_collection.find_one(query, :sort => [['_id', -1]])
+        record = oplog_collection.find(query).sort( {'_id' => -1} ).limit(1).first
       end
       record
     end
@@ -84,12 +84,11 @@ module Mongoriver
         @upstream_conn = Mongo::ReplSetConnection.new(@upstreams, opts)
       when :slave, :direct
         opts = @conn_opts.merge(:slave_ok => true)
-        host, port = parse_direct_upstream
-        @upstream_conn = Mongo::Connection.new(host, port, opts)
+        @upstream_conn = Mongo::Client.new(@upstreams[0], opts)
         raise "Server at #{@upstream_conn.host}:#{@upstream_conn.port} is the primary -- if you're ok with that, check why your wrapper is passing :direct rather than :slave" if @type == :slave && @upstream_conn.primary?
         ensure_upstream_replset!
       when :existing
-        raise "Must pass in a single existing Mongo::Connection with :existing" unless @upstreams.length == 1 && @upstreams[0].respond_to?(:db)
+        raise "Must pass in a single existing Mongo::Connection with :existing" unless @upstreams.length == 1 && @upstreams[0].respond_to?(:use)
         @upstream_conn = @upstreams[0]
       else
         raise "Invalid connection type: #{@type.inspect}"
@@ -97,7 +96,7 @@ module Mongoriver
     end
 
     def connection_config
-      @upstream_conn.db('admin').command(:ismaster => 1)
+      @upstream_conn.use('admin').command(:ismaster => 1).documents.first
     end
 
     def ensure_upstream_replset!
@@ -108,46 +107,27 @@ module Mongoriver
       end
     end
 
-    def parse_direct_upstream
-      raise "When connecting directly to a mongo instance, must provide a single upstream" unless @upstreams.length == 1
-      upstream = @upstreams[0]
-      parse_host_spec(upstream)
-    end
-
-    def parse_host_spec(host_spec)
-      host, port = host_spec.split(':')
-      host = '127.0.0.1' if host.to_s.length == 0
-      port = '27017' if port.to_s.length == 0
-      [host, port.to_i]
-    end
-
     def oplog_collection
-      @upstream_conn.db('local').collection(oplog)
+      @upstream_conn.use('local')[oplog]
     end
 
     # Start tailing the oplog.
-    # 
+    #
     # @param [Hash]
-    # @option opts [BSON::Timestamp, BSON::Binary] :from Placeholder indicating 
+    # @option opts [BSON::Timestamp, BSON::Binary] :from Placeholder indicating
     #           where to start the query from. Binary value is used for tokumx.
     #           The timestamp is non-inclusive.
     # @option opts [Hash] :filter Extra filters for the query.
-    # @option opts [Bool] :dont_wait(false) 
+    # @option opts [Bool] :dont_wait(false)
     def tail(opts = {})
       raise "Already tailing the oplog!" if @cursor
 
       query = build_tail_query(opts)
 
-      mongo_opts = {:timeout => false}.merge(opts[:mongo_opts] || {})
-
-      oplog_collection.find(query, mongo_opts) do |oplog|
-        oplog.add_option(Mongo::Constants::OP_QUERY_TAILABLE)
-        oplog.add_option(Mongo::Constants::OP_QUERY_OPLOG_REPLAY) if query['ts']
-        oplog.add_option(Mongo::Constants::OP_QUERY_AWAIT_DATA) unless opts[:dont_wait]
-
-        log.debug("Starting oplog stream from #{opts[:from] || 'start'}")
-        @cursor = oplog
-      end
+      cursor_type = opts[:dont_wait] ? :tailable : :tailable_await
+      oplog_replay = query['ts'] ? true : false
+      mongo_opts = {:timeout => false, :cursor_type => cursor_type, :oplog_replay => oplog_replay}.merge(opts[:mongo_opts] || {})
+      @cursor = oplog_collection.find(query, mongo_opts).to_enum.lazy
     end
 
     # Deprecated: use #tail(:from => ts, ...) instead
@@ -161,10 +141,9 @@ module Mongoriver
     end
 
     def stream(limit=nil, &blk)
-      count = 0
       @streaming = true
       state = TailerStreamState.new(limit)
-      while !@stop && !state.break? && @cursor.has_next?
+      while !@stop && !state.break? && cursor_has_more?
         state.increment
 
         record = @cursor.next
@@ -180,8 +159,7 @@ module Mongoriver
         end
       end
       @streaming = false
-
-      return @cursor.has_next?
+      return cursor_has_more?
     end
 
     def stop
@@ -211,6 +189,15 @@ module Mongoriver
       end
 
       query
+    end
+
+    def cursor_has_more?
+      begin
+        @cursor.peek
+        true
+      rescue StopIteration
+        false
+      end
     end
   end
 end

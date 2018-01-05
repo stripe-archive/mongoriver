@@ -10,7 +10,9 @@ describe 'Mongoriver::Stream' do
   end
 
   before do
-    conn = stub(:db => nil, :server_info => {})
+    conn = stub(:use => nil)
+    buildinfo_command = stub(:documents => [{}])
+    conn.expects(:command).with(:buildinfo => 1).returns(buildinfo_command)
     @tailer = Mongoriver::Tailer.new([conn], :existing)
     @outlet = Mongoriver::AbstractOutlet.new
     @stream = Mongoriver::Stream.new(@tailer, @outlet)

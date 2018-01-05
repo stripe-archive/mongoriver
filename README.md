@@ -55,6 +55,10 @@ this to resume interrupted tailers so that no information is lost.
 
 ## Version history
 
+### 0.5
+
+Move from the Moped driver to the native Mongo 2.0 driver.
+
 ### 0.4
 
 Add support for [tokumx](http://www.tokutek.com/products/tokumx-for-mongodb/). Backwards incompatible changes to persistent tailers to accomodate that. See [UPGRADING.md](UPGRADING.md).
