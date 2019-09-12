@@ -1,3 +1,5 @@
+# !IMPORTANT!: Please note that this project is currently unmaintained. Apologies for the inconvenience.
+
 # Mongoriver [![Build Status](https://travis-ci.org/stripe/mongoriver.svg?branch=master)](https://travis-ci.org/stripe/mongoriver)
 
 mongoriver is a library to monitor updates to your Mongo databases in
