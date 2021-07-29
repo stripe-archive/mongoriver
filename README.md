@@ -1,4 +1,6 @@
-# !IMPORTANT!: Please note that this project is currently unmaintained. Apologies for the inconvenience.
+> <img src="https://stripe.dev/images/badges/archived.png" width="250">
+>
+> This project is deprecated and is no longer being actively maintained.
 
 # Mongoriver [![Build Status](https://travis-ci.org/stripe/mongoriver.svg?branch=master)](https://travis-ci.org/stripe/mongoriver)
 
