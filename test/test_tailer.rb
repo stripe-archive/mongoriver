@@ -3,19 +3,14 @@ require 'mocha/setup'
 require 'mongo'
 require 'mongoriver'
 require_relative './cursor_stub'
-  
+
 describe 'Mongoriver::Tailer' do
   before do
     cursor = CursorStub.new
-    collection = stub do
-      expects(:find).yields(cursor)
-    end
-    db = stub do
-      expects(:collection).with('oplog.rs').returns(collection)
-    end
-    conn = stub(server_info: {}) do
-      expects(:db).with('local').returns(db)
-    end
+    collection = stub(:find => cursor)
+    buildinfo = stub(:documents => [{}])
+    conn = stub(:command => buildinfo)
+    conn.expects(:use).with('local').returns({'oplog.rs' => collection})
     @cursor = cursor
     @tailer = Mongoriver::Tailer.new([conn], :existing)
     @tailer.tail

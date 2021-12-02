@@ -1,6 +1,8 @@
 require 'mongo'
 
 class CursorStub
+  include Enumerable
+
   def initialize
     @events = []
     @index = 0
@@ -29,5 +31,11 @@ class CursorStub
   def next
     @index += 1
     @events[@index - 1]
+  end
+
+  def each(&block)
+    @events.each do |event|
+      block.call(event)
+    end
   end
 end

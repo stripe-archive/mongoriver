@@ -101,38 +101,10 @@ module Mongoriver
       end
     end
 
-    def handle_create_index(spec)
-      db_name, collection_name = parse_ns(spec['ns'])
-      index_key = spec['key'].map do |field, dir|
-        if dir.is_a?(Numeric)
-          [field, dir.round]
-        else
-          [field, dir]
-        end
-      end
-      options = {}
-
-      spec.each do |key, value|
-        case key
-        when 'v'
-          unless value == 1
-            raise NotImplementedError.new("Only v=1 indexes are supported, " \
-                                          "not v=#{value.inspect}")
-          end
-        when 'ns', 'key', '_id' # do nothing
-        else
-          options[key.to_sym] = value
-        end
-      end
-
-      assert(options.include?(:name),
-             "No name defined for index spec #{spec.inspect}")
-
-      trigger(:create_index, db_name, collection_name, index_key, options)
-    end
-
     def handle_cmd(db_name, collection_name, data)
-      if deleted_from_collection = data['deleteIndexes']
+      if data['createIndexes']
+        handle_create_index(data)
+      elsif deleted_from_collection = data['deleteIndexes']
         index_name = data['index']
         trigger(:drop_index, db_name, deleted_from_collection, index_name)
       elsif created_collection = data['create']
@@ -158,6 +130,37 @@ module Mongoriver
       end
 
       trigger(:create_collection, db_name, collection_name, options)
+    end
+
+    def handle_create_index(spec)
+      db_name, collection_name = parse_ns(spec['createIndexes'] || spec['ns'])
+
+      index_key = spec['key'].map do |field, dir|
+        if dir.is_a?(Numeric)
+          [field, dir.round]
+        else
+          [field, dir]
+        end
+      end
+      options = {}
+
+      spec.each do |key, value|
+        case key
+        when 'v'
+          unless value <= 2
+            raise NotImplementedError.new("Only v=1 and 2 indexes are supported, " \
+                                          "not v=#{value.inspect}")
+          end
+        when 'createIndexes', 'ns', 'key', '_id' # do nothing
+        else
+          options[key.to_sym] = value
+        end
+      end
+
+      assert(options.include?(:name),
+             "No name defined for index spec #{spec.inspect}")
+
+      trigger(:create_index, db_name, collection_name, index_key, options)
     end
   end
 end

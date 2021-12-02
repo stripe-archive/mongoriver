@@ -12,24 +12,21 @@ module Mongoriver
       db         = opts[:db] || "_mongoriver"
       collection = opts[:collection] || 'oplog-tailers'
       @service = service
-      @state_collection = @upstream_conn.db(db).collection(collection)
+      @state_collection = @upstream_conn.use(db)[collection]
     end
 
     def read_state
-      row = @state_collection.find_one(:service => @service)
-      return nil unless row
-
-      # Try to do seamless upgrades from old mongoriver versions
-      case row['v']
-      when nil
+      row = @state_collection.find(:service => @service).first
+      return nil unless row && row.is_a?(Array)
+      if row[0] == 'state'
+        return row[1]
+      else
         log.warn("Old style timestamp found in database. Converting!")
-        ts = Time.at(row['timestamp'].seconds)
+        ts = Time.at(row[1].seconds)
         return {
           'position' => most_recent_position(ts),
           'time' => ts
         }
-      when 1
-        return row['state']
       end
     end
 
