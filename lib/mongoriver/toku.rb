@@ -1,10 +1,11 @@
 module Mongoriver
-  # This module deals with converting TokuMX oplog records into mongodb oplogs. 
+  # This module deals with converting TokuMX oplog records into mongodb oplogs.
   class Toku
-    # @returns true if conn is a TokuMX database and the oplog records need to 
-    #               be converted 
+    # @returns true if conn is a TokuMX database and the oplog records need to
+    #               be converted
     def self.conversion_needed?(conn)
-      conn.server_info.has_key? "tokumxVersion"
+      server_info = conn.command({:buildinfo => 1}).documents.first
+      server_info.has_key? "tokumxVersion"
     end
 
     def self.operations_for(record, conn=nil)
@@ -19,7 +20,7 @@ module Mongoriver
     end
 
     # Convert hash representing a tokumx oplog record to mongodb oplog records.
-    # 
+    #
     # Things to note:
     #   1) Unlike mongo oplog, the timestamps will not be monotonically
     #      increasing
@@ -71,7 +72,7 @@ module Mongoriver
         "op" => "i",
         # namespace being updated. in form of database-name.collection.name
         "ns" => operation["ns"],
-        # operation being done. 
+        # operation being done.
         # e.g. {"_id"=>BSON::ObjectId('53fb8f6b9e126b2106000003')}
         "o" => operation["o"]
       }

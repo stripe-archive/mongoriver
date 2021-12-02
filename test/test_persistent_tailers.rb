@@ -6,14 +6,14 @@ require_relative './cursor_stub'
 
 def mocked_mongo()
   mongo_connection = stub()
-  db = stub()
+  use = stub()
   collection = stub()
-
-  mongo_connection.expects(:db).with('_mongoriver').returns(db)
-  db.expects(:collection).with('oplog-tailers').returns(collection)
+  mongo_connection.expects(:use).with('_mongoriver').returns({ 'oplog-tailers' => collection })
 
   # mongodb
-  mongo_connection.expects(:server_info).at_least_once.returns({})
+  buildinfo_command = stub()
+  buildinfo_command.expects(:documents).returns([{}])
+  mongo_connection.expects(:command).with(:buildinfo => 1).returns(buildinfo_command)
 
   [mongo_connection, collection]
 end
@@ -38,7 +38,7 @@ describe 'Mongoriver::PersistentTailer' do
       @state_collection.expects(:update)
       @tailer.save_state(@state)
 
-      @state_collection.expects(:find_one).returns({
+      @state_collection.expects(:find).returns({
         'state' => @state,
         'v' => 1
       })
@@ -48,15 +48,15 @@ describe 'Mongoriver::PersistentTailer' do
     it 'should update gracefully' do
       ts = BSON::Timestamp.new(77, 0)
 
-      @state_collection.expects(:find_one).returns('timestamp' => ts)
-      @tailer.expects(:most_recent_position).with(Time.at(77))
+      @state_collection.expects(:find).returns('timestamp' => ts)
+      @tailer.expects(:most_recent_position)
 
       assert_equal(Time.at(77), @tailer.read_state['time'])
     end
   end
 
   it 'helper methods for timestamps/positions' do
-    @state_collection.expects(:find_one).returns({
+    @state_collection.expects(:find).returns({
       'state' => @state,
       'v' => 1
     }).at_least_once
@@ -74,28 +74,26 @@ describe 'Mongoriver::PersistentTailer' do
 
   it 'should stream with state' do
     # Uses admin to verify that it is a replicaset
-    admin_db = stub()
-    admin_db.expects(:command).returns({'setName' => 'replica'})
-    @mongo_connection.expects(:db).with('admin').returns(admin_db)
+    admin_doc = stub(:first => {'setName' => 'replica', 'localTime' => nil })
+    admin_docs = stub(:documents => admin_doc)
+    admin_db = stub(:command => admin_docs)
+    @mongo_connection.expects(:use).with('admin').returns(admin_db)
+
     # Updates state collection when finish iteration
     @state_collection.expects(:update)
 
     # Oplog collection to return results
-    local_db = stub()
-    @mongo_connection.expects(:db).with('local').returns(local_db)
-    oplog_collection = stub()
-    local_db.expects(:collection).with('oplog.rs').returns(oplog_collection)
     cursor = CursorStub.new
-    oplog_collection.expects(:find).yields(cursor)
+    cursor.generate_ops(10)
+    oplog_collection = stub(:find => cursor)
+    @mongo_connection.expects(:use).with('local').returns({ 'oplog.rs' => oplog_collection })
 
     @tailer.tail(:from => BSON::Timestamp.new(Time.now.to_i, 0))
-
-    cursor.generate_ops(10)
 
     count = 0
     @tailer.stream do |record, state|
       count = state.count
-      state.break 
+      state.break
     end
     assert_equal(1, count)
   end

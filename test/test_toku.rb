@@ -25,7 +25,9 @@ describe 'Mongoriver::Toku' do
 
   describe 'conversions sent to stream' do
     before do
-      conn = stub(:db => nil, :server_info => {'tokumxVersion' => '1'})
+      server_info = stub(:documents => [ {'tokumxVersion' => '2'} ])
+      conn = stub(:use => nil, :command => server_info)
+
       @tailer = Mongoriver::Tailer.new([conn], :existing)
       @outlet = Mongoriver::AbstractOutlet.new
       @stream = Mongoriver::Stream.new(@tailer, @outlet)
@@ -93,7 +95,7 @@ describe 'Mongoriver::Toku' do
         'ns' => 'foo.$cmd',
         'o' => {'create' => 'bar', 'capped' => true, 'size' => 10}
       }))
-    end 
+    end
   end
 
   describe 'large transactions are joined by convert' do
