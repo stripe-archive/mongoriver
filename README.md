@@ -61,4 +61,4 @@ this to resume interrupted tailers so that no information is lost.
 
 ### 0.4
 
-Add support for [tokumx](http://www.tokutek.com/products/tokumx-for-mongodb/). Backwards incompatible changes to persistent tailers to accomodate that. See [UPGRADING.md](UPGRADING.md).
+Add support for [tokumx](http://www.tokutek.com/products/tokumx-for-mongodb/). Backwards incompatible changes to persistent tailers to accommodate that. See [UPGRADING.md](UPGRADING.md).
